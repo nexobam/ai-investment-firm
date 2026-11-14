@@ -447,6 +447,22 @@ def validate_and_execute(
     return portfolio, execution_result
 
 
+def _sanitize_csv_field(value: Any) -> str:
+    """
+    CSV数式インジェクション（= / + / - / @ 始まり）および改行混入を防止するサニタイズ関数。
+    """
+    text = (
+        str(value if value is not None else "")
+        .replace("\r\n", " ")
+        .replace("\r", " ")
+        .replace("\n", " ")
+        .strip()
+    )
+    if text and text[0] in ("=", "+", "-", "@", "\t"):
+        return f"'{text}"
+    return text
+
+
 def append_trade_history(execution_result: dict[str, Any], csv_path: Path) -> None:
     """
     trade_history.csv に当日の約定・判定結果を1行追記する。
@@ -455,17 +471,17 @@ def append_trade_history(execution_result: dict[str, Any], csv_path: Path) -> No
     file_exists = csv_path.exists() and csv_path.stat().st_size > 0
 
     row = {
-        "date": execution_result["date"],
-        "market_date": execution_result["market_date"],
-        "action": execution_result["action"],
-        "ticker": execution_result["ticker"],
-        "sector": execution_result["sector"],
+        "date": _sanitize_csv_field(execution_result["date"]),
+        "market_date": _sanitize_csv_field(execution_result["market_date"]),
+        "action": _sanitize_csv_field(execution_result["action"]),
+        "ticker": _sanitize_csv_field(execution_result["ticker"]),
+        "sector": _sanitize_csv_field(execution_result["sector"]),
         "shares": execution_result["shares"],
         "price": f"{execution_result['price']:.2f}",
         "total_amount": f"{execution_result['total_amount']:.2f}",
         "cash_after": f"{execution_result['cash_after']:.2f}",
         "total_equity_after": f"{execution_result['total_equity_after']:.2f}",
-        "note": execution_result["note"],
+        "note": _sanitize_csv_field(execution_result["note"]),
     }
 
     with csv_path.open("a", encoding="utf-8", newline="") as f:

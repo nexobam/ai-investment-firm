@@ -34,8 +34,12 @@
 | FR-05 | マルチAIエージェント会議機能 | `google-genai` SDK（モデル: `gemini-2.5-flash`）とPydanticスキーマ（`MeetingDecision`）を用い、1回のAPIコールで3役割のコメント・最終アクション・SBI証券注文ガイドを生成する。APIキー未設定時は安全なモック応答を返す。 | `agents.py` |
 | FR-06 | 物理バリデーション・仮想約定機能 | AIの決定に対し、現金残高不足・整数株チェック・35%上限ロック（総資産`$1,000`未満の新規1株購入時は免除）・空売り防止を検証し、仮想約定および `portfolio.json` / `trade_history.csv` の更新を行う。 | `portfolio_manager.py` |
 | FR-07 | 日次レポート生成機能 | 当日の会議結果、約定内容、保有ポートフォリオ状況を `reports/YYYY-MM-DD.md` に出力する。 | `portfolio_manager.py` |
-| FR-08 | 朝刊ダッシュボード生成機能 | Tailwind CSSとChart.jsを用い、サマリーヘッダー、最終結論カード、AI社員チャットログ、保有銘柄・チャート、売買履歴を含む単一HTML（`docs/index.html`）を生成する。 | `dashboard_generator.py` |
-| FR-09 | CI/CD日次自動実行機能 | GitHub Actionsにより毎朝9:00（JST）に自動実行し、更新ファイルをリポジトリへ自動コミット＆プッシュする。 | `.github/workflows/daily_meeting.yml` |
+| FR-08 | 朝刊ダッシュボード生成機能 | Tailwind CSSとChart.jsを用い、サマリーヘッダー、最終結論カード、ドラクエ風ドット絵AI社員チャットログ（好調/普通/不調バッジ・テンションゲージ・1行要約付き）、保有銘柄・チャート、実行済み売買履歴を含む完全日本語HTML（`docs/index.html`）を生成する。 | `dashboard_generator.py` |
+| FR-09 | CI/CD日次自動実行機能 | GitHub Actionsにより毎朝9:00（JST）に自動実行（`--proposal-only` 方針提案モード）し、更新ファイルをリポジトリへ自動コミット＆プッシュする。 | `.github/workflows/daily_meeting.yml` |
+| FR-10 | オーナー（社長）指令室サーバー機能 | ローカルWebサーバー（`server.py` / `start_dashboard.command`）により、画面上から「今すぐAI経営会議を招集（`POST /api/meeting`）」および「実際の売買・追加入金の報告反映（`POST /api/manual_trade`）」を双方向で実行可能とする。 | `server.py`, `main.py` |
+| FR-11 | フルスクリーンAIローディング＆RPGキャラ演出機能 | 会議招集（約15〜20秒）や口座反映の待機中に、4人のドラクエ風ドット絵人形アイコン（情報屋・大賢者・勇者リーダー・金庫番パラディン）と4段階ステップ進捗・経過秒数・プログレスバーを表示するモーダルを搭載する。 | `dashboard_generator.py` |
+| FR-12 | 複数株ステッパー＆複数銘柄一括売買機能 | 1株だけでなく複数株（`[-]` / `[+]` / `最大` ボタン）の指定、AIによる複数銘柄同時提案（`additional_proposals`）の一括承認、および手動報告パネルの「まとめリスト（カート）」による複数銘柄一括反映に対応する。 | `agents.py`, `server.py`, `dashboard_generator.py` |
+| FR-13 | 提案のみモード＆実行済み専用履歴表示機能 | 毎朝9時の自動会議および手動会議招集時は「方針提案のみ（`proposal_only=True`）」とし、社長が「決定」ボタンを押した実取引（`BUY` / `SELL` / `DEPOSIT`）のみを `trade_history.csv` と履歴テーブル（実行後の残り現金・保有株合計・総資産付き）へ記録する。 | `main.py`, `portfolio_manager.py`, `dashboard_generator.py` |
 
 ---
 
@@ -47,10 +51,11 @@
 2. **信頼性・耐障害性**
    - `yfinance` の `MultiIndex` カラム仕様変更や一部ティッカーの通信失敗・ニュース構造差異が発生してもシステム全体を停止させず、該当ティッカーのスキップまたはフォールバックにより完走させる。
    - `GEMINI_API_KEY` 未設定時やAPI通信例外発生時は、自動的に安全な `HOLD`（現金温存）判断へフォールバックする。
-3. **セキュリティ**
+3. **セキュリティ・脆弱性対策**
    - APIキーはローカルでは `.env`、GitHub Actionsでは `GitHub Secrets` から環境変数経由で読み込み、ソースコードやGit履歴に一切含めない。
+   - ローカルWebサーバー（`server.py`）は `127.0.0.1` バインドとし、`Origin` ヘッダー検証（外部悪意サイトからのCSRF/CORS遮断）、リクエストボディ上限（64KB）、ティッカー正規表現検証、CSV数式インジェクション無害化（`_sanitize_csv_field`）、およびHTML/DOM XSSエスケープ（`html.escape` / `escapeHtmlJs`）を徹底する。
 4. **保守性・テスト容易性**
-   - Python 3.11以上で動作し、外部通信（`yfinance`, `google-genai`）をモック化した `pytest` 自動テストスイート（単体・結合・シナリオ）により全ロジックを検証可能とする。
+   - Python 3.11以上で動作し、外部通信（`yfinance`, `google-genai`）をモック化した `pytest` 自動テストスイート（単体・結合・シナリオ計19テスト）により全ロジックを検証可能とする。
 
 ---
 

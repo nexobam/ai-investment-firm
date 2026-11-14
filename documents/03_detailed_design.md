@@ -163,21 +163,28 @@ UTF-8（ヘッダー付きCSV）形式で全売買および検証結果を記録
 
 ### 3.2 `agents.py`
 
-#### (1) `MeetingDecision(BaseModel)`
-厳守仕様通りのPydanticモデル：
-- `action: str` (`"BUY"`, `"SELL"`, or `"HOLD"`)
-- `ticker: str` (対象ティッカー、HOLD時は `"NONE"`)
-- `shares: int` (売買株数、1株単位の整数、HOLD時は `0`)
-- `researcher_comment: str`
-- `analyst_comment: str`
-- `manager_reason: str`
-- `sbi_order_guide: str`
+#### (1) `SubOrderProposal(BaseModel)` & `MeetingDecision(BaseModel)`
+Pydantic構造化出力モデル：
+- `SubOrderProposal`:
+  - `action: str` (`"BUY"` or `"SELL"`)
+  - `ticker: str` (対象ティッカーシンボル)
+  - `shares: int` (1株以上の整数株数)
+  - `reason: str` (同時提案の簡潔な理由)
+- `MeetingDecision`:
+  - `action: str` (`"BUY"`, `"SELL"`, or `"HOLD"`)
+  - `ticker: str` (第一候補ティッカー、HOLD時は `"NONE"`)
+  - `shares: int` (第一候補の売買株数、1株単位の整数、HOLD時は `0`)
+  - `researcher_comment: str`
+  - `analyst_comment: str`
+  - `manager_reason: str`
+  - `sbi_order_guide: str`
+  - `additional_proposals: list[SubOrderProposal]` (同時購入・売却を推奨する第2・第3候補のサブ提案リスト、最大3件)
 
-#### (2) `build_meeting_prompt(portfolio: dict, candidates: list[dict], holdings_info: dict) -> str`
-- 現在の現金残高、総資産額、保有銘柄一覧（セクター・株数・取得単価・現在値・含み損益・構成比）、スクリーニング上位6銘柄のテクニカル指標と直近ニュース、および投資ルール（現物整数株のみ、セクター分散、35%上限ルールと総資産$1,000未満時の新規1株免除ルール）を整理したプロンプト文字列を生成する。
+#### (2) `build_meeting_prompt(portfolio: dict, candidates: list[dict], holdings_info: dict, owner_instruction: str = "", analysis_only: bool = False) -> str`
+- 現在の現金残高、総資産額、保有銘柄一覧（セクター・株数・取得単価・現在値・含み損益・構成比）、スクリーニング上位6銘柄のテクニカル指標と直近ニュース、オーナーからの直接指示（`owner_instruction`）、および投資ルール（現物整数株のみ、複数株・複数銘柄分散提案ルール、35%上限ルールと総資産$1,000未満時の新規1株免除ルール）を整理したプロンプト文字列を生成する。
 
 #### (3) `run_ai_meeting(prompt_text: str) -> MeetingDecision`
-- 厳守1の実装パターンに従い、`os.getenv("GEMINI_API_KEY")` を確認。未設定またはプレースホルダーの場合はモックの `MeetingDecision` を返す。
+- `os.getenv("GEMINI_API_KEY")` を確認。未設定またはプレースホルダーの場合はモックの `MeetingDecision` を返す。
 - 設定されている場合は `genai.Client(api_key=api_key)` から `gemini-2.5-flash` を呼び出し、`MeetingDecision.model_validate_json(response.text)` を返す。万一API例外が発生した場合もフォールバックの `MeetingDecision(action="HOLD", ...)` を返しバッチ停止を防ぐ。
 
 ---
@@ -193,7 +200,7 @@ UTF-8（ヘッダー付きCSV）形式で全売買および検証結果を記録
 - 異なる場合のみ：`portfolio["cash"] += 100.0`, `portfolio["total_deposited"] += 100.0`, `portfolio["last_deposit_month"] = current_month` とし、`deposit_history` に `amount: 100.0, type: "MONTHLY"` を追記して `(portfolio, True)` を返す。
 - 同じ月の場合は何も加算せず `(portfolio, False)` を返す。
 
-#### (3) `validate_and_execute(portfolio: dict, decision: MeetingDecision, all_prices: dict[str, float], sector_map: dict[str, str], current_date: str, market_date: str) -> tuple[dict, dict]`
+#### (3) `validate_and_execute(portfolio: dict, decision: MeetingDecision, all_prices: dict[str, float], sector_map: dict[str, str], current_date: str, market_date: str, proposal_only: bool = False) -> tuple[dict, dict]`
 - **ステップ1：保有株の最新時価評価更新**
   - 保有銘柄の `current_price` を `all_prices` で更新し、`holdings_value` と `total_equity = cash + holdings_value` を算出する。
 - **ステップ2：AI決定の物理バリデーション**
@@ -210,15 +217,30 @@ UTF-8（ヘッダー付きCSV）形式で全売買および検証結果を記録
        - `post_buy_value > limit_value` であり、かつ初期免除条件を満たさない場合 → 35%上限ロック違反としてブロックし、`HOLD` に変更。
   - **`SELL` の場合**:
     1. 対象 `ticker` を保有していない、または `shares > existing_shares`（空売り・過大売却防止） → `HOLD` に変更。
-- **ステップ3：約定計算とポートフォリオ更新**
-  - `BUY` 約定時：現金から `cost` を減算し、`holdings[ticker]` の株数・平均取得単価（加重平均）を更新。
-  - `SELL` 約定時：現金に売却代金 `proceeds = price * shares` を加算し、保有株数を減算（0株になった場合は `holdings` から削除）。
-  - `asset_history` に当日のスナップショットを追加（同日の記録がすでにあれば上書き更新）。
-  - 執行担当コメント `accountant_comment` を含む `execution_result` 辞書を返す。
+- **ステップ3：提案のみモード（`proposal_only=True`）または約定計算**
+  - `proposal_only=True` の場合：バリデーションを通過しても口座残高・保有株数は一切変更せず、執行アクションを `HOLD`（社長の決定待ち）として提案単価・提案株数を保持した `execution_result` を返す。また `main.py` では `proposal_only=True` の場合は `trade_history.csv` への追記を行わない。
+  - `proposal_only=False` の場合：現金と保有株を更新し、`asset_history` に当日のスナップショットを追加する。
+
+#### (4) `record_owner_trade_report(...) -> tuple[dict, MeetingDecision, dict]`
+- オーナー（社長）がダッシュボード上で「AI提案を決定」または「手動で売買・入金報告」を行った際、指定された `BUY` / `SELL` / `DEPOSIT`（単一または複数一括）を即座に `portfolio.json` と `trade_history.csv` に記帳する。
+
+#### (5) `_sanitize_csv_field(value: Any) -> str`
+- CSV数式インジェクション対策として、先頭文字が `=`, `+`, `-`, `@`, `\t` で始まる文字列の先頭にシングルクォート `'` を付与して無害化し、改行コード（`\r\n`, `\r`, `\n`）を半角スペースに置換する。
 
 ---
 
 ### 3.4 `dashboard_generator.py`
 - `generate_dashboard(portfolio: dict, decision: MeetingDecision, execution_result: dict, trade_history: list[dict], output_path: Path) -> Path`
-- Tailwind CSS（CDN: `https://cdn.tailwindcss.com`）および Chart.js（CDN: `https://cdn.jsdelivr.net/npm/chart.js`）を読み込むHTML5ドキュメントを生成。
-- XSS対策および表示崩れ防止のため、文字列は `html.escape()` でエスケープし、Chart.js用のデータは `json.dumps()` で安全に埋め込む。
+- `_get_rpg_avatar_svg(role_key: str) -> str`: 16×16グリッド・`shape-rendering="crispEdges"` のドラクエ風ドット絵人形SVG（情報屋・大賢者・勇者リーダー・金庫番パラディン）を生成。
+- `_analyze_employee_mood(text: str, role_key: str, action: str) -> dict`: 発言内容とアクションから `🌞 好調！` / `⛅ 普通` / `🌧️ 不調…` バッジとテンションゲージ（`28%`〜`92%`）を判定。
+- `_extract_one_liner(text: str) -> str`: 長文コメントから「💡 つまり一言でいうと」の1行要約を抽出。
+- XSS対策：サーバーサイドでは `html.escape()`、フロントエンドJSでは `escapeHtmlJs()` により動的文字列をすべてエスケープし、Chart.js用データは `json.dumps()` で安全に埋め込む。
+
+---
+
+### 3.5 `server.py`（ローカル双方向サーバー＆セキュリティ制御）
+- バインド先：`127.0.0.1:8000`（ローカルループバック限定、外部ネットワークからの直接接続不可）。
+- `_is_origin_allowed(origin: str) -> bool`: `Origin` ヘッダーが `http://127.0.0.1:*`、`http://localhost:*`、または `null`（ローカル `file://`）以外の場合は `403 Forbidden` で遮断し、悪意ある外部WebサイトからのCSRF/CORS攻撃を防止。
+- リクエストサイズ上限：`MAX_REQUEST_BODY_BYTES = 65_536`（64KB）を超えるPOSTボディは `413 Payload Too Large` で即時拒否。
+- 入力値検証：ティッカーシンボルは `TICKER_REGEX = re.compile(r"^[A-Z0-9.\-]{1,10}$")` で検証し、一括取引件数は最大 `MAX_BATCH_TRADES = 20` 件、指示文字数は最大500文字、メモは最大200文字に制限。
+- セキュリティヘッダー：`X-Content-Type-Options: nosniff`、`X-Frame-Options: DENY` を全レスポンスに付与。

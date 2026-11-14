@@ -1674,6 +1674,16 @@ def generate_dashboard(
         const CURRENT_CASH = {cash:.2f};
         let tradeCart = [];
 
+        // DOM XSS防止用のHTMLエスケープ関数
+        function escapeHtmlJs(str) {{
+            return String(str ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }}
+
         function showOwnerAlert(message, isError = false) {{
             statusAlert.classList.remove('hidden', 'bg-rose-950/60', 'border-rose-500/50', 'text-rose-200', 'bg-emerald-950/60', 'border-emerald-500/50', 'text-emerald-200', 'bg-sky-950/60', 'border-sky-500/50', 'text-sky-200');
             if (isError) {{
@@ -1794,11 +1804,11 @@ def generate_dashboard(
                     throw new Error(data.message || '一括反映に失敗しました');
                 }}
                 stopLoadingOverlay(true, '✅ ' + selectedTrades.length + '銘柄の一括反映が完了しました！');
-                showOwnerAlert('✅ <b>' + data.message + '</b>', false);
+                showOwnerAlert('✅ <b>' + escapeHtmlJs(data.message) + '</b>', false);
                 setTimeout(() => reloadDashboardFresh(), 700);
             }} catch (err) {{
                 stopLoadingOverlay(false);
-                showOwnerAlert('❌ エラー: ' + err.message, true);
+                showOwnerAlert('❌ エラー: ' + escapeHtmlJs(err.message), true);
             }}
         }}
 
@@ -1917,7 +1927,8 @@ def generate_dashboard(
                 preview.innerHTML = '💡 上の銘柄ボタンを押すか一覧から選ぶと、ここに合計金額が自動計算されます';
                 return;
             }}
-            const jaName = TICKER_JA_MAP[ticker] ? ticker + '（' + TICKER_JA_MAP[ticker] + '）' : ticker;
+            const safeTicker = escapeHtmlJs(ticker);
+            const jaName = TICKER_JA_MAP[ticker] ? safeTicker + '（' + escapeHtmlJs(TICKER_JA_MAP[ticker]) + '）' : safeTicker;
             if (price <= 0) {{
                 preview.innerHTML = '📌 選択中: <b class="text-white">' + jaName + ' × ' + shares + '株</b>（決定時に最新株価を自動取得します）';
                 return;
@@ -1988,8 +1999,10 @@ def generate_dashboard(
                     ? '<span class="text-emerald-300 font-bold">🟢買付</span>'
                     : (item.action === 'SELL' ? '<span class="text-rose-300 font-bold">🔴売却</span>' : '<span class="text-sky-300 font-bold">💵入金</span>');
                 const sub = (item.price * item.shares).toFixed(2);
+                const safeItemTicker = escapeHtmlJs(item.ticker);
+                const safeItemShares = parseInt(item.shares, 10) || 1;
                 return '<div class="flex items-center justify-between bg-slate-950/80 px-2.5 py-1.5 rounded-lg border border-slate-800">'
-                    + '<div>' + actBadge + ' <b class="text-white font-mono ml-1">' + item.ticker + '</b> × ' + item.shares + '株 <span class="text-slate-400 font-mono">($' + sub + ')</span></div>'
+                    + '<div>' + actBadge + ' <b class="text-white font-mono ml-1">' + safeItemTicker + '</b> × ' + safeItemShares + '株 <span class="text-slate-400 font-mono">($' + sub + ')</span></div>'
                     + '<button type="button" onclick="removeTradeCartItem(' + i + ')" class="text-slate-400 hover:text-rose-400 font-bold px-1">✕</button>'
                     + '</div>';
             }}).join('');
@@ -2191,11 +2204,11 @@ def generate_dashboard(
                     throw new Error(data.message || '反映に失敗しました');
                 }}
                 stopLoadingOverlay(true, '✅ 社長の決定を口座データに反映しました！');
-                showOwnerAlert('✅ <b>決定を反映しました！</b>（' + data.message + '）画面を更新します...', false);
+                showOwnerAlert('✅ <b>決定を反映しました！</b>（' + escapeHtmlJs(data.message) + '）画面を更新します...', false);
                 setTimeout(() => reloadDashboardFresh(), 700);
             }} catch (err) {{
                 stopLoadingOverlay(false);
-                showOwnerAlert('❌ エラー: ' + err.message, true);
+                showOwnerAlert('❌ エラー: ' + escapeHtmlJs(err.message), true);
             }}
         }}
 
@@ -2236,7 +2249,7 @@ def generate_dashboard(
                 setTimeout(() => reloadDashboardFresh(), 700);
             }} catch (err) {{
                 stopLoadingOverlay(false);
-                showOwnerAlert('❌ エラー: ' + err.message, true);
+                showOwnerAlert('❌ エラー: ' + escapeHtmlJs(err.message), true);
                 btn.disabled = false;
                 btn.innerHTML = '<span>🚀 AI社員を集めて今すぐ会議させる（方針提案のみ）</span>';
             }}
@@ -2294,11 +2307,11 @@ def generate_dashboard(
                 }}
                 tradeCart = [];
                 stopLoadingOverlay(true, '✅ 口座データの更新が完了しました！');
-                showOwnerAlert('✅ <b>' + data.message + '</b> 画面を最新状態に更新します...', false);
+                showOwnerAlert('✅ <b>' + escapeHtmlJs(data.message) + '</b> 画面を最新状態に更新します...', false);
                 setTimeout(() => reloadDashboardFresh(), 700);
             }} catch (err) {{
                 stopLoadingOverlay(false);
-                showOwnerAlert('❌ エラー: ' + err.message, true);
+                showOwnerAlert('❌ エラー: ' + escapeHtmlJs(err.message), true);
                 btn.disabled = false;
                 btn.innerHTML = '<span id="submitReportBtnText">✅ 決定！この内容を口座データに反映する</span>';
                 renderTradeCart();

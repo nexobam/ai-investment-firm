@@ -18,13 +18,16 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from agents import MeetingDecision, build_meeting_prompt, run_ai_meeting
+from agents import MeetingDecision, SubOrderProposal, build_meeting_prompt, run_ai_meeting
 from portfolio_manager import (
+    _sanitize_csv_field,
+    append_trade_history,
     apply_monthly_deposit,
     load_or_init_portfolio,
     record_owner_trade_report,
     validate_and_execute,
 )
+from server import MAX_BATCH_TRADES, MAX_REQUEST_BODY_BYTES, TICKER_REGEX, _is_origin_allowed
 from screener import (
     LOW_COST_ETFS,
     UNIVERSE_STOCKS,
@@ -370,4 +373,78 @@ def test_ut11_owner_instruction_and_manual_trade_report(tmp_path: Path) -> None:
     )
     assert portfolio["cash"] == 353.0
     assert portfolio["total_deposited"] == 380.0
+
+
+def test_ut12_csv_injection_sanitization_and_multi_proposals(tmp_path: Path) -> None:
+    """UT-12: CSV数式インジェクション無害化と複数銘柄提案スキーマ（SubOrderProposal）検証"""
+    # CSV Formula Injection Sanitization
+    assert _sanitize_csv_field("=cmd|' /C calc'!A0") == "'=cmd|' /C calc'!A0"
+    assert _sanitize_csv_field("+SUM(A1:A2)") == "'+SUM(A1:A2)"
+    assert _sanitize_csv_field("-1+1") == "'-1+1"
+    assert _sanitize_csv_field("@IMPORTXML()") == "'@IMPORTXML()"
+    assert _sanitize_csv_field("通常のメモ\r\n改行あり") == "通常のメモ 改行あり"
+
+    history_csv = tmp_path / "trade_history.csv"
+    append_trade_history(
+        execution_result={
+            "date": "2026-11-14",
+            "market_date": "2026-11-13",
+            "action": "BUY",
+            "ticker": "NVDA",
+            "sector": "Technology",
+            "shares": 2,
+            "price": 150.0,
+            "total_amount": 300.0,
+            "cash_after": 30.0,
+            "total_equity_after": 330.0,
+            "note": "=1+1 悪意ある数式メモ",
+        },
+        csv_path=history_csv,
+    )
+    csv_text = history_csv.read_text(encoding="utf-8")
+    assert "'=1+1 悪意ある数式メモ" in csv_text
+
+    # SubOrderProposal を含む MeetingDecision の検証
+    multi_dec = MeetingDecision(
+        action="BUY",
+        ticker="SCHD",
+        shares=2,
+        researcher_comment="情報屋コメント",
+        analyst_comment="大賢者コメント",
+        manager_reason="リーダーコメント",
+        sbi_order_guide="注文ガイド",
+        additional_proposals=[
+            SubOrderProposal(action="BUY", ticker="SPYM", shares=1, reason="コアETFも同時買い増し"),
+            SubOrderProposal(action="BUY", ticker="KHC", shares=2, reason="高配当バリュー株も分散"),
+        ],
+    )
+    assert len(multi_dec.additional_proposals) == 2
+    assert multi_dec.additional_proposals[0].ticker == "SPYM"
+    assert multi_dec.additional_proposals[1].shares == 2
+
+
+def test_ut13_server_security_origin_and_validation() -> None:
+    """UT-13: ローカルサーバーのOrigin検証（CSRF/CORS防御）・ティッカー正規表現・上限設定の検証"""
+    # 許可されるローカルOrigin
+    assert _is_origin_allowed("") is True
+    assert _is_origin_allowed("null") is True
+    assert _is_origin_allowed("http://127.0.0.1:8000") is True
+    assert _is_origin_allowed("http://localhost:8000") is True
+
+    # 拒否される外部悪意サイトOrigin
+    assert _is_origin_allowed("https://evil.example.com") is False
+    assert _is_origin_allowed("http://127.0.0.1.evil.com") is False
+    assert _is_origin_allowed("http://malicious.local") is False
+
+    # ティッカー正規表現検証
+    assert TICKER_REGEX.match("NVDA") is not None
+    assert TICKER_REGEX.match("BRK.B") is not None
+    assert TICKER_REGEX.match("<script>") is None
+    assert TICKER_REGEX.match("NVDA;DROP") is None
+    assert TICKER_REGEX.match("TOO_LONG_TICKER_NAME") is None
+
+    # リクエスト上限値定数
+    assert MAX_REQUEST_BODY_BYTES == 65_536
+    assert MAX_BATCH_TRADES == 20
+
 

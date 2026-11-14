@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import threading
 import webbrowser
 from http import HTTPStatus
@@ -34,6 +35,31 @@ from portfolio_manager import (
 from screener import FALLBACK_PRICES, UNIVERSE_STOCKS, flatten_yfinance_df
 
 logger = logging.getLogger(__name__)
+
+# セキュリティ定数（DoS・CSRF・不正入力防止）
+MAX_REQUEST_BODY_BYTES: int = 65_536  # 64KB上限
+MAX_BATCH_TRADES: int = 20
+MAX_INSTRUCTION_LEN: int = 500
+MAX_NOTE_LEN: int = 200
+TICKER_REGEX = re.compile(r"^[A-Z0-9.\-]{1,10}$")
+ALLOWED_LOCAL_ORIGINS: set[str] = {
+    "",
+    "null",
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+}
+
+
+def _is_origin_allowed(origin: str) -> bool:
+    """
+    ローカル実行環境（localhost / 127.0.0.1 / file://由来のnull）からのOriginのみを許可する。
+    """
+    cleaned = str(origin or "").strip()
+    if cleaned in ALLOWED_LOCAL_ORIGINS:
+        return True
+    if cleaned.startswith("http://127.0.0.1:") or cleaned.startswith("http://localhost:"):
+        return True
+    return False
 
 
 def _fetch_latest_price_for_ticker(ticker: str, portfolio: dict[str, Any]) -> float:
@@ -65,12 +91,23 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
     file:// で直接 docs/index.html を開いている場合でも通信できるようCORSヘッダーを付与する。
     """
 
+    def _is_origin_allowed(self) -> bool:
+        origin = str(self.headers.get("Origin", "") or "").strip()
+        return _is_origin_allowed(origin)
+
     def _send_cors_headers(self) -> None:
-        self.send_header("Access-Control-Allow-Origin", "*")
+        origin = str(self.headers.get("Origin", "") or "").strip()
+        allow_origin = origin if (origin and self._is_origin_allowed()) else "http://127.0.0.1:8000"
+        self.send_header("Access-Control-Allow-Origin", allow_origin)
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
 
     def do_OPTIONS(self) -> None:
+        if not self._is_origin_allowed():
+            self.send_error(HTTPStatus.FORBIDDEN, "Forbidden Origin")
+            return
         self.send_response(HTTPStatus.NO_CONTENT)
         self._send_cors_headers()
         self.end_headers()
@@ -99,6 +136,8 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(html_bytes)))
             self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("X-Frame-Options", "DENY")
             self.end_headers()
             self.wfile.write(html_bytes)
             return
@@ -106,17 +145,38 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
 
     def do_POST(self) -> None:
-        content_len = int(self.headers.get("Content-Length", "0"))
-        raw_body = self.rfile.read(content_len).decode("utf-8") if content_len > 0 else "{}"
+        if not self._is_origin_allowed():
+            self._send_json(
+                HTTPStatus.FORBIDDEN,
+                {"status": "error", "message": "許可されていない外部オリジンからのリクエストです。"},
+            )
+            return
+
+        try:
+            content_len = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"status": "error", "message": "不正なContent-Lengthです。"})
+            return
+
+        if content_len < 0 or content_len > MAX_REQUEST_BODY_BYTES:
+            self._send_json(
+                HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+                {"status": "error", "message": f"リクエストサイズが上限（{MAX_REQUEST_BODY_BYTES} bytes）を超えています。"},
+            )
+            return
+
+        raw_body = self.rfile.read(content_len).decode("utf-8", errors="replace") if content_len > 0 else "{}"
         try:
             data = json.loads(raw_body) if raw_body else {}
+            if not isinstance(data, dict):
+                raise ValueError("JSON root must be an object")
         except Exception:
             self._send_json(HTTPStatus.BAD_REQUEST, {"status": "error", "message": "不正なJSONリクエストです。"})
             return
 
         # 1. AI社員への直接命令＆即時会議招集 API
         if self.path == "/api/meeting":
-            instruction = str(data.get("instruction", "")).strip()
+            instruction = str(data.get("instruction", "")).strip()[:MAX_INSTRUCTION_LEN]
             analysis_only = bool(data.get("analysis_only", False))
             try:
                 import importlib
@@ -170,6 +230,13 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                     }
                 ]
 
+            if len(trade_items) > MAX_BATCH_TRADES:
+                self._send_json(
+                    HTTPStatus.BAD_REQUEST,
+                    {"status": "error", "message": f"一度に報告できる件数は最大 {MAX_BATCH_TRADES} 件までです。"},
+                )
+                return
+
             portfolio_path = BASE_DIR / "data" / "portfolio.json"
             csv_path = BASE_DIR / "data" / "trade_history.csv"
             reports_dir = BASE_DIR / "reports"
@@ -182,18 +249,25 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                 last_exec_res = None
 
                 for item in trade_items:
+                    if not isinstance(item, dict):
+                        raise ValueError("取引項目が不正な形式です。")
                     action = str(item.get("action", "BUY")).upper().strip()
                     ticker = str(item.get("ticker", "")).upper().strip()
                     shares = int(item.get("shares", 1) or 1)
                     price = float(item.get("price", 0.0) or 0.0)
-                    note = str(item.get("note", data.get("note", ""))).strip()
+                    note = str(item.get("note", data.get("note", ""))).strip()[:MAX_NOTE_LEN]
 
-                    if action in ("BUY", "SELL") and price <= 0.0:
-                        price = _fetch_latest_price_for_ticker(ticker, portfolio)
-                        if price <= 0.0:
+                    if action in ("BUY", "SELL"):
+                        if not ticker or not TICKER_REGEX.match(ticker):
                             raise ValueError(
-                                f"{ticker} の現在株価を自動取得できませんでした。約定単価（USD）を直接入力してください。"
+                                f"ティッカーシンボル（'{ticker}'）の形式が不正です。半角英数字1〜10文字で指定してください。"
                             )
+                        if price <= 0.0:
+                            price = _fetch_latest_price_for_ticker(ticker, portfolio)
+                            if price <= 0.0:
+                                raise ValueError(
+                                    f"{ticker} の現在株価を自動取得できませんでした。約定単価（USD）を直接入力してください。"
+                                )
 
                     portfolio, decision, exec_res = record_owner_trade_report(
                         portfolio=portfolio,

@@ -16,13 +16,14 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from agents import MeetingDecision, build_meeting_prompt, run_ai_meeting
+from agents import MeetingDecision, SubOrderProposal, build_meeting_prompt, run_ai_meeting
 from dashboard_generator import generate_dashboard
 from portfolio_manager import (
     append_trade_history,
     generate_daily_report,
     load_or_init_portfolio,
     load_trade_history,
+    record_owner_trade_report,
     save_portfolio,
     validate_and_execute,
 )
@@ -178,9 +179,76 @@ def test_it04_portfolio_to_dashboard_generator(tmp_path: Path) -> None:
 
     assert "https://cdn.tailwindcss.com" in html_text
     assert "https://cdn.jsdelivr.net/npm/chart.js" in html_text
-    assert "BUY（現物買付）" in html_text
+    assert "🟢 株を購入 (BUY)" in html_text
     assert "SCHD" in html_text
     assert "情報収集担当テストコメント" in html_text
     assert "テクニカル分析担当テストコメント" in html_text
     assert "ファンドマネージャーテストコメント" in html_text
     assert "SBI証券テスト注文ガイド" in html_text
+
+
+def test_it05_rpg_icons_mood_and_executed_only_history(tmp_path: Path) -> None:
+    """IT-05: 提案モード時の履歴非汚染・RPGドット絵アイコン・調子バッジ・複数銘柄提案の統合検証"""
+    portfolio_path = tmp_path / "data" / "portfolio.json"
+    csv_path = tmp_path / "data" / "trade_history.csv"
+    html_path = tmp_path / "docs" / "index.html"
+
+    portfolio = load_or_init_portfolio(portfolio_path, current_date="2026-11-14")
+    all_prices = {"SCHD": 28.0, "SPYM": 68.0}
+
+    # 1. まず提案のみモード（proposal_only=True）で会議提案を生成
+    decision_prop = MeetingDecision(
+        action="BUY",
+        ticker="SCHD",
+        shares=2,
+        researcher_comment="好調で割安な高配当ニュースが追い風です。",
+        analyst_comment="RSIが29で絶好の買い場（押し目）シグナルが出ています。",
+        manager_reason="配当基盤を作るためSCHD 2株とSPYM 1株の分散買付を提案します。",
+        sbi_order_guide="SBI証券でSCHD 2株を注文してください。",
+        additional_proposals=[
+            SubOrderProposal(action="BUY", ticker="SPYM", shares=1, reason="S&P500コアETFも同時買い増し")
+        ],
+    )
+    portfolio, prop_res = validate_and_execute(
+        portfolio,
+        decision_prop,
+        all_prices,
+        UNIVERSE_STOCKS,
+        "2026-11-14",
+        "2026-11-13",
+        proposal_only=True,
+    )
+    # 提案のみモードでは現金残高が減らないこと
+    assert portfolio["cash"] == 330.0
+    assert prop_res["action"] == "HOLD"
+
+    # 2. もし過去のHOLD行がCSVに混ざっていても、ダッシュボードの履歴テーブルからは除外され、
+    #    実際に実行された BUY / SELL / DEPOSIT のみが表示されることを検証
+    append_trade_history(prop_res, csv_path)
+    portfolio, _, exec_buy = record_owner_trade_report(
+        portfolio=portfolio,
+        action="BUY",
+        ticker="SCHD",
+        shares=2,
+        price=28.0,
+        sector_map=UNIVERSE_STOCKS,
+        current_date="2026-11-14",
+        note="社長がAI提案を承認・実行",
+    )
+    append_trade_history(exec_buy, csv_path)
+
+    trades = load_trade_history(csv_path)
+    out_file = generate_dashboard(portfolio, decision_prop, prop_res, trades, html_path)
+    html_text = out_file.read_text(encoding="utf-8")
+
+    # ドラクエ風ドット絵SVG・調子バッジ・ローディングモーダル・複数提案UIが含まれること
+    assert 'shape-rendering="crispEdges"' in html_text
+    assert "🌞 好調！" in html_text
+    assert "aiLoadingOverlay" in html_text
+    assert "multi-prop-check" in html_text
+    assert "実際に実行した売買・入金の履歴（実行時の口座状況）" in html_text
+    history_section = html_text.split("実際に実行した売買・入金の履歴（実行時の口座状況）")[1]
+    assert "社長がAI提案を承認・実行" in history_section
+    # 提案のみの「【社長の決定待ち】」行は履歴テーブル（history_section）に表示されないこと
+    assert "【社長の決定待ち】AI提案:" not in history_section
+
