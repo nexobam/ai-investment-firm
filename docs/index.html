@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Investment Firm | 朝刊ダッシュボード</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased">
+    <!-- ヘッダーバー -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="inline-block w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
+                        AI Investment Firm <span class="text-slate-400 font-normal text-base">Morning Brief</span>
+                    </h1>
+                </div>
+                <p class="text-xs text-slate-400 mt-0.5">
+                    米国株マルチAIエージェント仮想投資会社（SBI証券1株現物ルール準拠）
+                </p>
+            </div>
+            <div class="text-left sm:text-right text-xs text-slate-400 font-mono">
+                <div>対象米国市場取引日: <span class="text-slate-200 font-semibold">2026-11-13</span></div>
+                <div>最終更新日時: <span class="text-slate-200">2026-11-14T17:38:12+09:00</span></div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+        <!-- 1. サマリーヘッダーKPI -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">総資産額 (Total Equity)</p>
+                <p class="text-2xl sm:text-3xl font-extrabold text-white mt-2 font-mono">$330.00</p>
+                <p class="text-xs text-slate-400 mt-1">円換算目安: 約 ¥49,500 <span class="text-slate-500">(@150円/USD)</span></p>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">トータル損益 (Total Return)</p>
+                <p class="text-2xl sm:text-3xl font-extrabold text-emerald-400 mt-2 font-mono">
+                    +$0.00
+                </p>
+                <p class="text-xs text-emerald-400 mt-1 font-mono">
+                    損益率: +0.00% (累計元本 $330.00)
+                </p>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">現在の現金残高 (Cash)</p>
+                <p class="text-2xl sm:text-3xl font-extrabold text-sky-400 mt-2 font-mono">$330.00</p>
+                <p class="text-xs text-slate-400 mt-1">約 ¥49,500 / キャッシュ比率 100.0%</p>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">保有株評価額 &amp; 積立状況</p>
+                <p class="text-2xl sm:text-3xl font-extrabold text-indigo-400 mt-2 font-mono">$0.00</p>
+                <p class="text-xs text-slate-400 mt-1">保有銘柄数: 0銘柄 / 最終積立月: 2026-11</p>
+            </div>
+        </section>
+
+        <!-- 2. 本日の最終結論カード（最上部・強調表示） -->
+        <section class="bg-slate-900/95 border-2 border-slate-600/60 rounded-2xl p-6 shadow-2xl">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800 pb-4">
+                <div class="flex items-center gap-3">
+                    <span class="px-4 py-1.5 rounded-full text-sm font-extrabold border bg-slate-500/20 text-slate-300 border-slate-500/40">
+                        HOLD（現金温存・見送り）
+                    </span>
+                    <div>
+                        <h2 class="text-lg sm:text-xl font-bold text-white">本日のAI経営会議 最終結論</h2>
+                        <p class="text-xs text-slate-400">AI決定通り現金温存（HOLD）</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-950/70 p-3 rounded-xl border border-slate-800 text-center">
+                    <div>
+                        <div class="text-[11px] text-slate-400">対象ティッカー</div>
+                        <div class="text-base font-extrabold text-white font-mono">NONE</div>
+                    </div>
+                    <div>
+                        <div class="text-[11px] text-slate-400">売買株数 (整数)</div>
+                        <div class="text-base font-extrabold text-white font-mono">0 株</div>
+                    </div>
+                    <div>
+                        <div class="text-[11px] text-slate-400">現在株価 (終値)</div>
+                        <div class="text-base font-extrabold text-white font-mono">$0.00</div>
+                    </div>
+                    <div>
+                        <div class="text-[11px] text-slate-400">合計金額</div>
+                        <div class="text-base font-extrabold text-emerald-400 font-mono">$0.00</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SBI証券での手動注文ガイドメモ -->
+            <div class="mt-4 bg-indigo-950/40 border border-indigo-500/30 rounded-xl p-4">
+                <div class="flex items-center gap-2 text-indigo-300 font-bold text-sm mb-1">
+                    <span>📱 SBI証券（米国株アプリ/Web）手動注文操作ガイド</span>
+                    <span class="text-xs font-normal text-indigo-400">（セクター: -）</span>
+                </div>
+                <p class="text-sm text-slate-200 leading-relaxed whitespace-pre-line">本日の注文はありません（現金温存）。</p>
+            </div>
+        </section>
+
+        <!-- 3. 4体のAI社員の経営会議ルーム -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg">
+            <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <span>💬 AI社員の朝刊経営会議ルーム</span>
+                <span class="text-xs font-normal text-slate-400">（4エージェント合議ログ）</span>
+            </h2>
+            <div class="space-y-4">
+                <!-- ① 情報収集担当 -->
+                <div class="flex items-start gap-3.5">
+                    <div class="w-11 h-11 rounded-full bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-xl shrink-0">
+                        📰
+                    </div>
+                    <div class="flex-1 bg-slate-950 border border-slate-800 rounded-2xl rounded-tl-none p-4">
+                        <div class="flex items-center gap-2 mb-1.5">
+                            <span class="font-bold text-sm text-white">情報収集担当</span>
+                            <span class="px-2 py-0.5 text-[11px] rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 font-medium">
+                                News Researcher
+                            </span>
+                        </div>
+                        <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-line">[Mock] 市場ニュースは概ね中立です。</p>
+                    </div>
+                </div>
+
+                <!-- ② テクニカル分析担当 -->
+                <div class="flex items-start gap-3.5">
+                    <div class="w-11 h-11 rounded-full bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-xl shrink-0">
+                        📊
+                    </div>
+                    <div class="flex-1 bg-slate-950 border border-slate-800 rounded-2xl rounded-tl-none p-4">
+                        <div class="flex items-center gap-2 mb-1.5">
+                            <span class="font-bold text-sm text-white">テクニカル分析担当</span>
+                            <span class="px-2 py-0.5 text-[11px] rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-medium">
+                                Technical Analyst
+                            </span>
+                        </div>
+                        <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-line">[Mock] RSIおよび移動平均線は様子見水準です。</p>
+                    </div>
+                </div>
+
+                <!-- ③ ファンドマネージャー -->
+                <div class="flex items-start gap-3.5">
+                    <div class="w-11 h-11 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xl shrink-0">
+                        👑
+                    </div>
+                    <div class="flex-1 bg-slate-950 border border-amber-500/30 rounded-2xl rounded-tl-none p-4">
+                        <div class="flex items-center gap-2 mb-1.5">
+                            <span class="font-bold text-sm text-white">ファンドマネージャー</span>
+                            <span class="px-2 py-0.5 text-[11px] rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-medium">
+                                Fund Manager (最終意思決定)
+                            </span>
+                        </div>
+                        <p class="text-sm text-slate-200 leading-relaxed whitespace-pre-line">[Mock] APIキー未設定のため安全に現金温存（HOLD）とします。</p>
+                    </div>
+                </div>
+
+                <!-- ④ 執行・経理担当 -->
+                <div class="flex items-start gap-3.5">
+                    <div class="w-11 h-11 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-xl shrink-0">
+                        🛡️
+                    </div>
+                    <div class="flex-1 bg-slate-950 border border-emerald-500/30 rounded-2xl rounded-tl-none p-4">
+                        <div class="flex items-center gap-2 mb-1.5">
+                            <span class="font-bold text-sm text-white">執行・経理担当</span>
+                            <span class="px-2 py-0.5 text-[11px] rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium">
+                                Execution &amp; Accounting (物理検証・記帳)
+                            </span>
+                        </div>
+                        <p class="text-sm text-slate-200 leading-relaxed whitespace-pre-line">【現金温存（HOLD）】ファンドマネージャーの決定通り本日の売買は見送り、現金残高 $330.00 を温存しました。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. ポートフォリオ＆チャート -->
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- セクター構成比ドーナツグラフ -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg">
+                <h3 class="text-base font-bold text-white mb-4">セクター構成比 (Cash含む)</h3>
+                <div class="relative h-64 flex items-center justify-center">
+                    <canvas id="sectorChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 総資産推移折れ線グラフ -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg lg:col-span-2">
+                <h3 class="text-base font-bold text-white mb-4">総資産推移 vs 累計入金額 (USD)</h3>
+                <div class="relative h-64">
+                    <canvas id="equityChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- 保有銘柄一覧テーブル -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg overflow-hidden">
+            <h2 class="text-lg font-bold text-white mb-4">保有銘柄一覧 (Current Holdings)</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-700 text-xs uppercase text-slate-400">
+                            <th class="py-3 px-4">ティッカー</th>
+                            <th class="py-3 px-4">セクター</th>
+                            <th class="py-3 px-4 text-right">保有株数</th>
+                            <th class="py-3 px-4 text-right">平均取得単価</th>
+                            <th class="py-3 px-4 text-right">現在株価</th>
+                            <th class="py-3 px-4 text-right">評価額</th>
+                            <th class="py-3 px-4 text-right">含み損益</th>
+                            <th class="py-3 px-4 text-right">構成比</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm">
+                        
+            <tr>
+                <td colspan="8" class="py-8 text-center text-slate-400">
+                    現在保有している銘柄はありません（Cash 100% 温存中）
+                </td>
+            </tr>
+            
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 5. 売買履歴一覧テーブル -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg overflow-hidden">
+            <h2 class="text-lg font-bold text-white mb-4">直近売買・執行履歴 (Trade History)</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-700 text-xs uppercase text-slate-400">
+                            <th class="py-3 px-4">実行日</th>
+                            <th class="py-3 px-4">アクション</th>
+                            <th class="py-3 px-4">ティッカー</th>
+                            <th class="py-3 px-4">セクター</th>
+                            <th class="py-3 px-4 text-right">株数</th>
+                            <th class="py-3 px-4 text-right">約定単価</th>
+                            <th class="py-3 px-4 text-right">約定金額</th>
+                            <th class="py-3 px-4 text-right">取引後現金</th>
+                            <th class="py-3 px-4">執行メモ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition text-sm">
+                    <td class="py-3 px-4 font-mono text-slate-300">2026-11-14</td>
+                    <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-600/30 text-slate-300 border border-slate-600/40">HOLD</span></td>
+                    <td class="py-3 px-4 font-bold text-white">NONE</td>
+                    <td class="py-3 px-4 text-slate-400 text-xs">-</td>
+                    <td class="py-3 px-4 text-right font-mono">0株</td>
+                    <td class="py-3 px-4 text-right font-mono">$0.00</td>
+                    <td class="py-3 px-4 text-right font-mono font-semibold text-white">$0.00</td>
+                    <td class="py-3 px-4 text-right font-mono text-slate-300">$330.00</td>
+                    <td class="py-3 px-4 text-slate-300 text-xs">AI決定通り現金温存（HOLD）</td>
+                </tr>
+                
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer class="border-t border-slate-800 py-6 mt-12 text-center text-xs text-slate-500">
+        AI Investment Firm Simulation System — Powered by Python, yfinance &amp; Gemini 2.5 Flash
+    </footer>
+
+    <!-- Chart.js 描画スクリプト -->
+    <script>
+        const sectorLabels = ["Cash (現金)"];
+        const sectorValues = [330.0];
+
+        const ctxSector = document.getElementById('sectorChart').getContext('2d');
+        new Chart(ctxSector, {
+            type: 'doughnut',
+            data: {
+                labels: sectorLabels,
+                datasets: [{
+                    data: sectorValues,
+                    backgroundColor: [
+                        '#10b981', '#38bdf8', '#a855f7', '#f59e0b',
+                        '#f43f5e', '#6366f1', '#14b8a6', '#64748b'
+                    ],
+                    borderColor: '#0f172a',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: '#cbd5e1', font: { size: 11 } }
+                    }
+                }
+            }
+        });
+
+        const historyDates = ["2026-11-14"];
+        const historyEquity = [330.0];
+        const historyDeposited = [330.0];
+
+        const ctxEquity = document.getElementById('equityChart').getContext('2d');
+        new Chart(ctxEquity, {
+            type: 'line',
+            data: {
+                labels: historyDates,
+                datasets: [
+                    {
+                        label: '総資産額 (Total Equity $)',
+                        data: historyEquity,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                        fill: true,
+                        tension: 0.25,
+                        pointRadius: 4
+                    },
+                    {
+                        label: '累計入金額 (Invested Capital $)',
+                        data: historyDeposited,
+                        borderColor: '#64748b',
+                        borderDash: [5, 5],
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: 'rgba(148, 163, 184, 0.1)' }
+                    },
+                    y: {
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: 'rgba(148, 163, 184, 0.1)' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: '#cbd5e1' }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

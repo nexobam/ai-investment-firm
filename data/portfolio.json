@@ -1,0 +1,32 @@
+{
+  "cash": 330.0,
+  "initial_capital": 330.0,
+  "total_deposited": 330.0,
+  "last_deposit_month": "2026-11",
+  "last_market_date": "2026-11-13",
+  "updated_at": "2026-11-14T17:38:12+09:00",
+  "holdings": {},
+  "deposit_history": [
+    {
+      "date": "2026-11-14",
+      "month": "2026-11",
+      "amount": 330.0,
+      "type": "INITIAL",
+      "note": "初回初期資金入金 ($330.0)"
+    }
+  ],
+  "asset_history": [
+    {
+      "date": "2026-11-14",
+      "market_date": "2026-11-13",
+      "cash": 330.0,
+      "holdings_value": 0.0,
+      "total_equity": 330.0,
+      "total_deposited": 330.0,
+      "total_return": 0.0,
+      "total_return_pct": 0.0,
+      "action": "HOLD",
+      "ticker": "NONE"
+    }
+  ]
+}

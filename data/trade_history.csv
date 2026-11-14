@@ -1,0 +1,2 @@
+date,market_date,action,ticker,sector,shares,price,total_amount,cash_after,total_equity_after,note
+2026-11-14,2026-11-13,HOLD,NONE,-,0,0.00,0.00,330.00,330.00,AI決定通り現金温存（HOLD）
