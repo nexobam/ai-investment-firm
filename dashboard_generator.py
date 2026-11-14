@@ -732,41 +732,81 @@ def generate_dashboard(
     history_equity_json = json.dumps(history_equity)
     history_deposited_json = json.dumps(history_deposited)
 
-    # 売買履歴テーブル
+    # 売買履歴テーブル（「提案のみ・見送り(HOLD)」は履歴に表示せず、実際に実行した売買・入金のみを表示する）
     trade_rows_html: list[str] = []
     if trade_history:
         for row in trade_history:
-            r_action = str(row.get("action", "HOLD")).upper()
-            if r_action == "BUY":
-                r_badge = '<span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">買付 (BUY)</span>'
-            elif r_action == "SELL":
-                r_badge = '<span class="px-2 py-0.5 rounded text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">売却 (SELL)</span>'
-            else:
-                r_badge = '<span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-600/30 text-slate-300 border border-slate-600/40">見送り / 提案</span>'
+            r_action = str(row.get("action", "HOLD")).upper().strip()
+            r_ticker_raw = str(row.get("ticker", "NONE")).upper().strip()
+            try:
+                r_shares_int = int(float(row.get("shares", 0) or 0))
+            except ValueError:
+                r_shares_int = 0
 
-            r_ticker_raw = str(row.get("ticker", "NONE"))
+            # 提案段階（HOLD）や 0株の見送りデータは履歴一覧から除外する
+            if r_action not in ("BUY", "SELL") or r_ticker_raw in ("NONE", "") or r_shares_int <= 0:
+                continue
+
             r_sector_raw = str(row.get("sector", "-"))
+            try:
+                r_price_val = float(row.get("price", 0.0) or 0.0)
+            except ValueError:
+                r_price_val = 0.0
+            try:
+                r_total_val = float(row.get("total_amount", r_price_val * r_shares_int) or 0.0)
+            except ValueError:
+                r_total_val = 0.0
+            try:
+                r_cash_after = float(row.get("cash_after", 0.0) or 0.0)
+            except ValueError:
+                r_cash_after = 0.0
+            try:
+                r_equity_after = float(row.get("total_equity_after", r_cash_after) or 0.0)
+            except ValueError:
+                r_equity_after = r_cash_after
+            r_holdings_after = max(0.0, round(r_equity_after - r_cash_after, 2))
+            r_jpy_total = int(round(r_total_val * USD_TO_JPY_RATE))
+
+            if r_ticker_raw == "CASH":
+                r_badge = '<span class="inline-block whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-extrabold bg-sky-500/20 text-sky-300 border border-sky-500/40">💵 現金を入金</span>'
+                r_detail_str = f"追加入金 (${r_total_val:.2f})"
+                r_money_html = f'<div class="font-mono font-extrabold text-sky-300 whitespace-nowrap">+${r_total_val:.2f}</div><div class="text-[11px] text-slate-400 whitespace-nowrap">約 ¥{r_jpy_total:,} 入金</div>'
+            elif r_action == "BUY":
+                r_badge = '<span class="inline-block whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">🟢 株を購入 (BUY)</span>'
+                r_detail_str = f"{r_shares_int}株 × ${r_price_val:.2f}"
+                r_money_html = f'<div class="font-mono font-extrabold text-emerald-400 whitespace-nowrap">-${r_total_val:.2f}</div><div class="text-[11px] text-slate-400 whitespace-nowrap">約 ¥{r_jpy_total:,} 支払</div>'
+            else:
+                r_badge = '<span class="inline-block whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/40">🔴 株を売却 (SELL)</span>'
+                r_detail_str = f"{r_shares_int}株 × ${r_price_val:.2f}"
+                r_money_html = f'<div class="font-mono font-extrabold text-amber-300 whitespace-nowrap">+${r_total_val:.2f}</div><div class="text-[11px] text-slate-400 whitespace-nowrap">約 ¥{r_jpy_total:,} 受取</div>'
 
             trade_rows_html.append(
                 f"""
                 <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition text-sm">
-                    <td class="py-3 px-4 font-mono text-slate-300">{html.escape(str(row.get('date', '')))}</td>
-                    <td class="py-3 px-4">{r_badge}</td>
-                    <td class="py-3 px-4 font-bold text-white">{html.escape(to_ticker_display(r_ticker_raw))}</td>
-                    <td class="py-3 px-4 text-slate-400 text-xs">{html.escape(to_sector_ja(r_sector_raw))}</td>
-                    <td class="py-3 px-4 text-right font-mono">{html.escape(str(row.get('shares', '0')))}株</td>
-                    <td class="py-3 px-4 text-right font-mono">${html.escape(str(row.get('price', '0.00')))}</td>
-                    <td class="py-3 px-4 text-right font-mono font-semibold text-white">${html.escape(str(row.get('total_amount', '0.00')))}</td>
-                    <td class="py-3 px-4 text-right font-mono text-slate-300">${html.escape(str(row.get('cash_after', '0.00')))}</td>
-                    <td class="py-3 px-4 text-slate-300 text-xs">{html.escape(str(row.get('note', '')))}</td>
+                    <td class="py-3.5 px-4 font-mono text-slate-300 whitespace-nowrap">{html.escape(str(row.get('date', '')))}</td>
+                    <td class="py-3.5 px-4 whitespace-nowrap">{r_badge}</td>
+                    <td class="py-3.5 px-4 whitespace-nowrap">
+                        <div class="font-bold text-white">{html.escape(to_ticker_display(r_ticker_raw))}</div>
+                        <div class="text-[11px] text-slate-400">{html.escape(to_sector_ja(r_sector_raw))}</div>
+                    </td>
+                    <td class="py-3.5 px-4 text-right font-mono font-bold text-white whitespace-nowrap">{html.escape(r_detail_str)}</td>
+                    <td class="py-3.5 px-4 text-right whitespace-nowrap">{r_money_html}</td>
+                    <td class="py-3.5 px-4 whitespace-nowrap bg-slate-950/40">
+                        <div class="text-xs font-mono text-sky-300 font-bold">💵 残り現金: ${r_cash_after:.2f}</div>
+                        <div class="text-[11px] font-mono text-slate-300">🏢 株合計: ${r_holdings_after:.2f} ／ 💰 総資産: ${r_equity_after:.2f}</div>
+                    </td>
+                    <td class="py-3.5 px-4 text-slate-300 text-xs min-w-[200px]">{html.escape(str(row.get('note', '')))}</td>
                 </tr>
                 """
             )
-    else:
+
+    if not trade_rows_html:
         trade_rows_html.append(
             """
             <tr>
-                <td colspan="9" class="py-6 text-center text-slate-400">取引履歴はまだありません</td>
+                <td colspan="7" class="py-8 text-center text-slate-400">
+                    まだ実際に実行された売買・入金履歴はありません（AIの提案は「決定」ボタンを押した時だけここに記録されます）
+                </td>
             </tr>
             """
         )
@@ -1477,40 +1517,41 @@ def generate_dashboard(
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
-                        <tr class="border-b border-slate-700 text-xs text-slate-400">
+                        <tr class="border-b border-slate-700 text-xs text-slate-400 whitespace-nowrap">
                             <th class="py-3 px-4">銘柄名（ティッカー）</th>
                             <th class="py-3 px-4">業種（セクター）</th>
-                            <th class="py-3 px-4 text-right">持っている株数</th>
+                            <th class="py-3 px-4 text-right">保有株数</th>
                             <th class="py-3 px-4 text-right">買った時の平均価格</th>
                             <th class="py-3 px-4 text-right">今の株価</th>
                             <th class="py-3 px-4 text-right">現在の価値合計</th>
                             <th class="py-3 px-4 text-right">含み損益（もうけ）</th>
-                            <th class="py-3 px-4 text-right">資産に占める割合</th>
+                            <th class="py-3 px-4 text-right">資産の割合</th>
                         </tr>
                     </thead>
-                    <tbody class="text-sm">
+                    <tbody class="text-sm whitespace-nowrap">
                         {"".join(holdings_rows_html)}
                     </tbody>
                 </table>
             </div>
         </section>
 
-        <!-- 5. 売買履歴一覧テーブル -->
+        <!-- 5. 実際に実行した売買・入金履歴一覧テーブル -->
         <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg overflow-hidden">
-            <h2 class="text-lg font-bold text-white mb-4">🕒 これまでの会議提案・売買・入金の履歴</h2>
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-4">
+                <h2 class="text-lg font-bold text-white">🕒 実際に実行した売買・入金の履歴（実行時の口座状況）</h2>
+                <span class="text-xs text-slate-400">※AI会議の「提案だけ（未決定・見送り）」はここには入らず、あなたが実際に決定した売買・入金だけが記録されます</span>
+            </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
-                        <tr class="border-b border-slate-700 text-xs text-slate-400">
-                            <th class="py-3 px-4">日付</th>
-                            <th class="py-3 px-4">種類</th>
-                            <th class="py-3 px-4">銘柄名</th>
-                            <th class="py-3 px-4">業種</th>
-                            <th class="py-3 px-4 text-right">株数</th>
-                            <th class="py-3 px-4 text-right">1株価格</th>
-                            <th class="py-3 px-4 text-right">合計金額</th>
-                            <th class="py-3 px-4 text-right">残った現金</th>
-                            <th class="py-3 px-4">内容メモ</th>
+                        <tr class="border-b border-slate-700 text-xs text-slate-400 whitespace-nowrap">
+                            <th class="py-3 px-4">実行日</th>
+                            <th class="py-3 px-4">やったこと</th>
+                            <th class="py-3 px-4">銘柄名・業種</th>
+                            <th class="py-3 px-4 text-right">実行した株数・単価</th>
+                            <th class="py-3 px-4 text-right">動いたお金（支払・受取）</th>
+                            <th class="py-3 px-4">実行直後の口座状況（当時の現金・株・総資産）</th>
+                            <th class="py-3 px-4">実行時のメモ</th>
                         </tr>
                     </thead>
                     <tbody>

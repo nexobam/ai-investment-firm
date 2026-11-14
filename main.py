@@ -151,8 +151,12 @@ def run_daily_workflow(
     execution_result["all_prices"] = all_prices
 
     # 7. データ永続化（portfolio.json, trade_history.csv, reports/YYYY-MM-DD.md, docs/index.html）
+    # 提案のみモード（proposal_only=True）の時はまだ売買を実行していないため履歴CSVには追加しない
     save_portfolio(portfolio, portfolio_path)
-    append_trade_history(execution_result, trade_csv_path)
+    if not proposal_only and execution_result.get("action") in ("BUY", "SELL"):
+        append_trade_history(execution_result, trade_csv_path)
+    elif not trade_csv_path.exists():
+        append_trade_history(execution_result, trade_csv_path)
     report_path = generate_daily_report(
         portfolio=portfolio,
         decision=decision,
