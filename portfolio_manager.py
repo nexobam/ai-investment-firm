@@ -168,10 +168,12 @@ def validate_and_execute(
     sector_map: dict[str, str],
     current_date: str,
     market_date: str,
+    proposal_only: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """
     ファンドマネージャーの決定に対して物理バリデーションを実行し、
-    違反時は安全に HOLD へフォールバックさせた上で仮想約定を行う。
+    違反時は安全に HOLD へフォールバックさせる。
+    proposal_only=True の場合は口座残高を勝手に動かさず「社長の決定待ち（提案状態）」として記録する。
     """
     holdings_value_before = update_holdings_valuation(portfolio, all_prices, sector_map)
     cash_before = round(float(portfolio.get("cash", 0.0)), 2)
@@ -187,6 +189,9 @@ def validate_and_execute(
     executed_price = 0.0
     total_amount = 0.0
     sector = "-"
+    proposal_price = 0.0
+    proposal_sector = "-"
+    is_proposal_pending = False
     validation_note = "AI決定通り現金温存（HOLD）"
     accountant_comment = ""
 
@@ -236,6 +241,22 @@ def validate_and_execute(
                         f"【物理検証NG：35%上限ロック】{raw_ticker} 購入後の評価額（${post_buy_value:.2f}）が"
                         f"総資産（${total_equity_before:.2f}）の35%上限（${max_allowed_value:.2f}）を超過するため"
                         "追加購入をブロックし、HOLDとしました。"
+                    )
+                elif proposal_only:
+                    # 提案のみモード：社長が決定ボタンを押すまで口座残高は動かさない
+                    is_proposal_pending = True
+                    proposal_price = price
+                    proposal_sector = sector_map.get(raw_ticker, existing_holding.get("sector", "Other"))
+                    sector = proposal_sector
+                    executed_price = price
+                    validation_note = (
+                        f"【社長の決定待ち】AI提案: {raw_ticker} {raw_shares}株 @ ${price:.2f}（合計 ${cost:.2f}）の買付方針を提案"
+                    )
+                    accountant_comment = (
+                        f"【資金・ルール検証OK（社長の最終決定待ち）】{raw_ticker} {raw_shares}株 @ ${price:.2f}"
+                        f"（合計 ${cost:.2f}）は現金残高（${cash_before:.2f}）およびリスク管理ルールをクリアしています。\n"
+                        "AI会議では「方針の提案」までを行い、まだ口座の現金は動かしていません。"
+                        "実際に購入される場合は、上の「✅ このAI提案通りに決定する」ボタンを押してください。"
                     )
                 else:
                     # BUY 約定成立
@@ -308,6 +329,22 @@ def validate_and_execute(
             if price <= 0.0:
                 validation_note = f"{raw_ticker}の有効な売却株価が取得できないためHOLDへフォールバック"
                 accountant_comment = f"【物理検証NG】{raw_ticker} の現在株価が取得できないため売却を見送り、HOLDとしました。"
+            elif proposal_only:
+                is_proposal_pending = True
+                proposal_price = price
+                proposal_sector = existing_holding.get("sector", sector_map.get(raw_ticker, "Other"))
+                sector = proposal_sector
+                executed_price = price
+                proceeds = round(price * raw_shares, 2)
+                validation_note = (
+                    f"【社長の決定待ち】AI提案: {raw_ticker} {raw_shares}株 @ ${price:.2f}（受取目安 ${proceeds:.2f}）の売却方針を提案"
+                )
+                accountant_comment = (
+                    f"【保有株チェックOK（社長の最終決定待ち）】保有中の {raw_ticker} {raw_shares}株 @ ${price:.2f}"
+                    f"（受取額目安 ${proceeds:.2f}）の売却提案です。\n"
+                    "AI会議では「方針の提案」までを行い、まだ保有株は売却していません。"
+                    "実際に売却される場合は、上の「✅ このAI提案通りに決定する」ボタンを押してください。"
+                )
             else:
                 # SELL 約定成立
                 final_action = "SELL"
@@ -377,12 +414,21 @@ def validate_and_execute(
     else:
         asset_history.append(snapshot)
 
+    # もし物理バリデーションでNGとなった場合は提案フラグを下げてdecisionもHOLDに揃える
+    if proposal_only and not is_proposal_pending and raw_action in ("BUY", "SELL"):
+        decision.action = "HOLD"
+        decision.ticker = "NONE"
+        decision.shares = 0
+
     execution_result = {
         "date": current_date,
         "market_date": market_date,
         "requested_action": raw_action,
         "requested_ticker": raw_ticker,
         "requested_shares": raw_shares,
+        "is_proposal_only": is_proposal_pending,
+        "proposal_price": proposal_price,
+        "proposal_sector": proposal_sector,
         "action": final_action,
         "ticker": final_ticker,
         "sector": sector,

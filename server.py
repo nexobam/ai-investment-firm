@@ -62,7 +62,18 @@ def _fetch_latest_price_for_ticker(ticker: str, portfolio: dict[str, Any]) -> fl
 class DashboardRequestHandler(BaseHTTPRequestHandler):
     """
     ダッシュボードHTML配信およびオーナー指令・売買報告APIを処理するハンドラ。
+    file:// で直接 docs/index.html を開いている場合でも通信できるようCORSヘッダーを付与する。
     """
+
+    def _send_cors_headers(self) -> None:
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+
+    def do_OPTIONS(self) -> None:
+        self.send_response(HTTPStatus.NO_CONTENT)
+        self._send_cors_headers()
+        self.end_headers()
 
     def _send_json(self, status_code: int, payload: dict[str, Any]) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -70,6 +81,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self._send_cors_headers()
         self.end_headers()
         self.wfile.write(body)
 
@@ -112,6 +124,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                     force=True,
                     owner_instruction=instruction,
                     analysis_only=analysis_only,
+                    proposal_only=True,
                 )
                 exec_res = result.get("execution_result", {})
                 self._send_json(

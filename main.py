@@ -45,6 +45,7 @@ def run_daily_workflow(
     current_date: str | None = None,
     owner_instruction: str = "",
     analysis_only: bool = False,
+    proposal_only: bool = False,
 ) -> dict[str, Any]:
     """
     日次シミュレーションのフルパイプラインを実行する。
@@ -136,7 +137,7 @@ def run_daily_workflow(
         decision.shares,
     )
 
-    # 6. 執行・経理担当による物理バリデーション＆仮想約定
+    # 6. 執行・経理担当による物理バリデーション＆仮想約定（または提案のみ記録）
     portfolio, execution_result = validate_and_execute(
         portfolio=portfolio,
         decision=decision,
@@ -144,6 +145,7 @@ def run_daily_workflow(
         sector_map=sector_map,
         current_date=current_date,
         market_date=market_date,
+        proposal_only=proposal_only,
     )
 
     # 7. データ永続化（portfolio.json, trade_history.csv, reports/YYYY-MM-DD.md, docs/index.html）
@@ -206,6 +208,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="売買は行わず（HOLD固定）、今すぐ最新の市場分析と会議だけを実行する",
     )
+    parser.add_argument(
+        "--auto-execute",
+        action="store_true",
+        help="提案のみで止めず、AIの決定通りに自動で仮想約定まで行う場合に指定",
+    )
     return parser.parse_args(argv)
 
 
@@ -217,6 +224,7 @@ def main(argv: list[str] | None = None) -> int:
         force=args.force or bool(args.instruction) or args.analysis_only,
         owner_instruction=args.instruction,
         analysis_only=args.analysis_only,
+        proposal_only=not args.auto_execute,
     )
     return 0
 

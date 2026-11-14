@@ -1,2 +1,2 @@
 date,market_date,action,ticker,sector,shares,price,total_amount,cash_after,total_equity_after,note
-2026-11-14,2026-11-13,BUY,NVDA,Technology,1,162.85,162.85,167.15,330.00,"初期特例（総資産$1,000未満・未保有新規1株）適用により NVDA 1株を買付約定"
+2026-11-14,2026-11-13,HOLD,NONE,Technology,0,162.85,0.00,330.00,330.00,【社長の決定待ち】AI提案: NVDA 1株 @ $162.85（合計 $162.85）の買付方針を提案

@@ -1,7 +1,7 @@
 """
 朝刊ダッシュボード画面生成モジュール（dashboard_generator.py -> docs/index.html）
 Tailwind CSS（CDN）と Chart.js（CDN）を使用し、単一HTMLで美しく表示される
-PC・スマートフォン対応レスポンシブUIを生成する。
+PC・スマートフォン対応レスポンシブUI（完全日本語表記・社長決裁ボタン付き）を生成する。
 """
 
 from __future__ import annotations
@@ -15,6 +15,100 @@ from agents import MeetingDecision
 
 USD_TO_JPY_RATE: float = 150.0
 
+# 英語セクター名 -> 分かりやすい日本語業種名マップ
+SECTOR_JA_MAP: dict[str, str] = {
+    "Technology": "IT・半導体（テクノロジー）",
+    "Financials": "銀行・金融",
+    "Healthcare": "医療・製薬（ヘルスケア）",
+    "Consumer Discretionary": "自動車・小売（一般消費財）",
+    "Consumer Staples": "食品・日用品（生活必需品）",
+    "Energy": "石油・エネルギー",
+    "Industrials": "機械・重工・輸送",
+    "Materials": "素材・資源・化学",
+    "Utilities": "電力・インフラ（公益）",
+    "Real Estate": "不動産・REIT",
+    "Communication Services": "通信・ネットメディア",
+    "Broad Market ETF": "米国株全体パック（ETF）",
+    "Dividend ETF": "高配当株パック（ETF）",
+    "Growth/Tech ETF": "ハイテク成長株パック（ETF）",
+    "International ETF": "全世界株パック（ETF）",
+    "Cash Deposit": "現金入金",
+    "Other": "その他業種",
+    "-": "取引なし（様子見）",
+}
+
+# ティッカー -> 日本語の会社名・銘柄名マップ
+TICKER_NAME_JA_MAP: dict[str, str] = {
+    "AAPL": "アップル",
+    "MSFT": "マイクロソフト",
+    "NVDA": "エヌビディア",
+    "GOOGL": "グーグル（アルファベット）",
+    "INTC": "インテル",
+    "CSCO": "シスコシステムズ",
+    "JPM": "JPモルガン・チェース",
+    "BAC": "バンク・オブ・アメリカ",
+    "WFC": "ウェルズ・ファーゴ",
+    "C": "シティグループ",
+    "SOFI": "ソーファイ・テクノロジーズ",
+    "JNJ": "ジョンソン・エンド・ジョンソン",
+    "PFE": "ファイザー",
+    "MRK": "メルク",
+    "ABBV": "アッヴィ",
+    "BMY": "ブリストル・マイヤーズ",
+    "AMZN": "アマゾン",
+    "TSLA": "テスラ",
+    "F": "フォード・モーター",
+    "NKE": "ナイキ",
+    "PG": "P&G（プロクター＆ギャンブル）",
+    "KO": "コカ・コーラ",
+    "PEP": "ペプシコ",
+    "WMT": "ウォルマート",
+    "KHC": "クラフト・ハインツ",
+    "XOM": "エクソンモービル",
+    "CVX": "シェブロン",
+    "OXY": "オクシデンタル・ペトロリアム",
+    "SLB": "シュルンベルジェ",
+    "GE": "GEエアロスペース",
+    "CAT": "キャタピラー",
+    "BA": "ボーイング",
+    "CSX": "CSX（鉄道輸送）",
+    "FCX": "フリーポート・マクモラン",
+    "NEM": "ニューモント（金鉱株）",
+    "DOW": "ダウ・ケミカル",
+    "NEE": "ネクステラ・エナジー",
+    "SO": "サザン（電力）",
+    "AES": "AES（電力）",
+    "PLD": "プロロジス（物流不動産）",
+    "O": "リアルティ・インカム（毎月配当REIT）",
+    "VICI": "VICIプロパティーズ（REIT）",
+    "META": "メタ（旧フェイスブック）",
+    "VZ": "ベライゾン（通信）",
+    "T": "AT&T（通信）",
+    "SPYM": "S&P500連動 米国株ETF",
+    "SCHD": "米国高配当株ETF",
+    "QQQM": "ナスダック100連動ETF",
+    "VXUS": "米国除く全世界株ETF",
+    "VTI": "全米株式まるごとETF",
+    "CASH": "現金（ドル）",
+    "NONE": "対象なし（様子見）",
+}
+
+
+def to_sector_ja(sector: str) -> str:
+    return SECTOR_JA_MAP.get(sector, sector)
+
+
+def to_ticker_display(ticker: str) -> str:
+    t = (ticker or "NONE").upper().strip()
+    ja_name = TICKER_NAME_JA_MAP.get(t)
+    if ja_name and t not in ("NONE", "CASH"):
+        return f"{t}（{ja_name}）"
+    if t == "CASH":
+        return "現金入金"
+    if t == "NONE":
+        return "なし（見送り）"
+    return t
+
 
 def generate_dashboard(
     portfolio: dict[str, Any],
@@ -25,7 +119,7 @@ def generate_dashboard(
 ) -> Path:
     """
     最新のポートフォリオ状態、AI会議結果、執行結果、売買履歴から
-    docs/index.html を生成して保存する。
+    完全日本語表記・社長決裁ボタン付きの docs/index.html を生成して保存する。
     """
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -45,28 +139,66 @@ def generate_dashboard(
     return_color_class = "text-emerald-400" if total_return >= 0 else "text-rose-400"
     return_sign = "+" if total_return >= 0 else ""
 
-    # 本日の最終結論カード用スタイル
-    action = str(execution_result.get("action", "HOLD")).upper()
-    if action == "BUY":
+    # AI提案アクションと実際の執行状態を確認
+    # 提案モード（社長の決定待ち）の場合は requested_action または decision.action を強調表示する
+    is_proposal_pending = bool(execution_result.get("is_proposal_only", False))
+    display_action = (
+        str(decision.action or "HOLD").upper()
+        if is_proposal_pending
+        else str(execution_result.get("action", "HOLD")).upper()
+    )
+    raw_ticker = (
+        str(decision.ticker or "NONE").upper()
+        if is_proposal_pending
+        else str(execution_result.get("ticker", "NONE")).upper()
+    )
+    shares_int = (
+        int(decision.shares or 0)
+        if is_proposal_pending
+        else int(execution_result.get("shares", 0))
+    )
+    price_val = float(
+        execution_result.get("proposal_price", execution_result.get("price", 0.0))
+    )
+    total_amount_val = round(price_val * shares_int, 2) if shares_int > 0 else float(execution_result.get("total_amount", 0.0))
+
+    raw_sector = str(execution_result.get("proposal_sector", execution_result.get("sector", "-")))
+    sector_ja_str = html.escape(to_sector_ja(raw_sector))
+    ticker_display_str = html.escape(to_ticker_display(raw_ticker))
+    raw_ticker_escaped = html.escape(raw_ticker)
+
+    if display_action == "BUY":
         badge_bg = "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
         card_border = "border-emerald-500/50"
-        action_label = "BUY（現物買付）"
-    elif action == "SELL":
+        action_label = "BUY（現物買付の提案）" if is_proposal_pending else "BUY（現物買付）"
+    elif display_action == "SELL":
         badge_bg = "bg-rose-500/20 text-rose-300 border-rose-500/40"
         card_border = "border-rose-500/50"
-        action_label = "SELL（現物売却）"
+        action_label = "SELL（現物売却の提案）" if is_proposal_pending else "SELL（現物売却）"
     else:
         badge_bg = "bg-slate-500/20 text-slate-300 border-slate-500/40"
         card_border = "border-slate-600/60"
         action_label = "HOLD（現金温存・見送り）"
 
-    ticker_str = html.escape(str(execution_result.get("ticker", "NONE")))
-    sector_str = html.escape(str(execution_result.get("sector", "-")))
-    shares_int = int(execution_result.get("shares", 0))
-    price_val = float(execution_result.get("price", 0.0))
-    total_amount_val = float(execution_result.get("total_amount", 0.0))
     exec_note_str = html.escape(str(execution_result.get("note", "")))
     sbi_guide_str = html.escape(decision.sbi_order_guide or "本日の注文はありません。")
+
+    # 社長決裁ボタン（AIがBUYまたはSELLを提案している場合にワンクリックで承認・反映できるボタン）
+    approval_button_html = ""
+    if display_action in ("BUY", "SELL") and raw_ticker not in ("NONE", "CASH", "") and shares_int >= 1:
+        btn_color = "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/50" if display_action == "BUY" else "bg-rose-600 hover:bg-rose-500 shadow-rose-900/50"
+        act_word = "買付" if display_action == "BUY" else "売却"
+        approval_button_html = f"""
+        <div class="mt-4 pt-4 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div class="text-xs text-amber-300 font-medium">
+                👑 <b>社長（あなた）の最終決定待ち：</b>AIは方針を提案した段階です。実際に{act_word}したら右のボタンを押すと口座残高に反映されます。
+            </div>
+            <button type="button" onclick="approveAiProposal('{display_action}', '{raw_ticker_escaped}', {shares_int}, {price_val:.2f})"
+                class="{btn_color} text-white font-extrabold text-sm px-5 py-2.5 rounded-xl shadow-lg transition shrink-0 flex items-center justify-center gap-2">
+                <span>✅ このAI提案通りに決定する（{raw_ticker_escaped} {shares_int}株の{act_word}を反映）</span>
+            </button>
+        </div>
+        """
 
     # 4体のAI社員コメント
     researcher_text = html.escape(decision.researcher_comment)
@@ -74,7 +206,7 @@ def generate_dashboard(
     manager_text = html.escape(decision.manager_reason)
     accountant_text = html.escape(str(execution_result.get("accountant_comment", "")))
 
-    # 保有銘柄テーブルとセクター集計
+    # 保有銘柄テーブルと日本語セクター集計
     holdings: dict[str, dict[str, Any]] = portfolio.get("holdings", {})
     holdings_rows_html: list[str] = []
     sector_totals: dict[str, float] = {}
@@ -82,7 +214,8 @@ def generate_dashboard(
     if holdings:
         for t, h in holdings.items():
             h_shares = int(h.get("shares", 0))
-            h_sector = str(h.get("sector", "Other"))
+            h_sector_raw = str(h.get("sector", "Other"))
+            h_sector_ja = to_sector_ja(h_sector_raw)
             h_avg = float(h.get("avg_cost", 0.0))
             h_cur = float(h.get("current_price", 0.0))
             h_mv = float(h.get("market_value", h_shares * h_cur))
@@ -90,14 +223,14 @@ def generate_dashboard(
             h_pnl_pct = float(h.get("unrealized_pnl_pct", 0.0))
             h_weight = round((h_mv / total_equity) * 100.0, 1) if total_equity > 0 else 0.0
 
-            sector_totals[h_sector] = round(sector_totals.get(h_sector, 0.0) + h_mv, 2)
+            sector_totals[h_sector_ja] = round(sector_totals.get(h_sector_ja, 0.0) + h_mv, 2)
             pnl_cls = "text-emerald-400" if h_pnl >= 0 else "text-rose-400"
 
             holdings_rows_html.append(
                 f"""
                 <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition">
-                    <td class="py-3 px-4 font-bold text-white">{html.escape(t)}</td>
-                    <td class="py-3 px-4 text-slate-300 text-xs">{html.escape(h_sector)}</td>
+                    <td class="py-3 px-4 font-bold text-white">{html.escape(to_ticker_display(t))}</td>
+                    <td class="py-3 px-4 text-slate-300 text-xs">{html.escape(h_sector_ja)}</td>
                     <td class="py-3 px-4 text-right font-mono">{h_shares}株</td>
                     <td class="py-3 px-4 text-right font-mono">${h_avg:.2f}</td>
                     <td class="py-3 px-4 text-right font-mono">${h_cur:.2f}</td>
@@ -114,13 +247,13 @@ def generate_dashboard(
             """
             <tr>
                 <td colspan="8" class="py-8 text-center text-slate-400">
-                    現在保有している銘柄はありません（Cash 100% 温存中）
+                    現在持っている株はありません（全額 現金で温存中）
                 </td>
             </tr>
             """
         )
 
-    sector_totals["Cash (現金)"] = round(cash, 2)
+    sector_totals["使える現金（ドル）"] = round(cash, 2)
     sector_labels_json = json.dumps(list(sector_totals.keys()), ensure_ascii=False)
     sector_values_json = json.dumps(list(sector_totals.values()))
 
@@ -140,19 +273,22 @@ def generate_dashboard(
         for row in trade_history:
             r_action = str(row.get("action", "HOLD")).upper()
             if r_action == "BUY":
-                r_badge = '<span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">BUY</span>'
+                r_badge = '<span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">買付 (BUY)</span>'
             elif r_action == "SELL":
-                r_badge = '<span class="px-2 py-0.5 rounded text-xs font-bold bg-rose-500/20 text-emerald-300 border border-rose-500/30">SELL</span>'
+                r_badge = '<span class="px-2 py-0.5 rounded text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">売却 (SELL)</span>'
             else:
-                r_badge = '<span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-600/30 text-slate-300 border border-slate-600/40">HOLD</span>'
+                r_badge = '<span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-600/30 text-slate-300 border border-slate-600/40">見送り / 提案</span>'
+
+            r_ticker_raw = str(row.get("ticker", "NONE"))
+            r_sector_raw = str(row.get("sector", "-"))
 
             trade_rows_html.append(
                 f"""
                 <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition text-sm">
                     <td class="py-3 px-4 font-mono text-slate-300">{html.escape(str(row.get('date', '')))}</td>
                     <td class="py-3 px-4">{r_badge}</td>
-                    <td class="py-3 px-4 font-bold text-white">{html.escape(str(row.get('ticker', 'NONE')))}</td>
-                    <td class="py-3 px-4 text-slate-400 text-xs">{html.escape(str(row.get('sector', '-')))}</td>
+                    <td class="py-3 px-4 font-bold text-white">{html.escape(to_ticker_display(r_ticker_raw))}</td>
+                    <td class="py-3 px-4 text-slate-400 text-xs">{html.escape(to_sector_ja(r_sector_raw))}</td>
                     <td class="py-3 px-4 text-right font-mono">{html.escape(str(row.get('shares', '0')))}株</td>
                     <td class="py-3 px-4 text-right font-mono">${html.escape(str(row.get('price', '0.00')))}</td>
                     <td class="py-3 px-4 text-right font-mono font-semibold text-white">${html.escape(str(row.get('total_amount', '0.00')))}</td>
@@ -175,7 +311,7 @@ def generate_dashboard(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Investment Firm | 朝刊ダッシュボード</title>
+    <title>AI投資会社 | 朝刊ダッシュボード＆社長室</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -187,16 +323,16 @@ def generate_dashboard(
                 <div class="flex items-center gap-2">
                     <span class="inline-block w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></span>
                     <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
-                        AI Investment Firm <span class="text-slate-400 font-normal text-base">Morning Brief</span>
+                        AI投資会社 朝刊ダッシュボード <span class="text-slate-400 font-normal text-sm">（AI Investment Firm Morning Brief）</span>
                     </h1>
                 </div>
                 <p class="text-xs text-slate-400 mt-0.5">
-                    米国株マルチAIエージェント仮想投資会社（SBI証券1株現物ルール準拠）
+                    AI社員4人が毎朝9時に投資方針を提案し、社長（あなた）が最終決定・売買報告を行うコックピット
                 </p>
             </div>
             <div class="text-left sm:text-right text-xs text-slate-400 font-mono">
-                <div>対象米国市場取引日: <span class="text-slate-200 font-semibold">{market_date}</span></div>
-                <div>最終更新日時: <span class="text-slate-200">{updated_at}</span></div>
+                <div>分析した米国市場の日付: <span class="text-slate-200 font-semibold">{market_date}</span></div>
+                <div>画面の最終更新日時: <span class="text-slate-200">{updated_at}</span></div>
             </div>
         </div>
     </header>
@@ -205,40 +341,84 @@ def generate_dashboard(
         <!-- 1. サマリーヘッダーKPI -->
         <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
-                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">総資産額 (Total Equity)</p>
+                <p class="text-xs font-bold text-slate-300">💰 現在の総資産額（株＋現金） <span class="hidden">Total Equity</span></p>
                 <p class="text-2xl sm:text-3xl font-extrabold text-white mt-2 font-mono">${total_equity:.2f}</p>
-                <p class="text-xs text-slate-400 mt-1">円換算目安: 約 ¥{jpy_total_equity:,} <span class="text-slate-500">(@150円/USD)</span></p>
+                <p class="text-xs text-slate-400 mt-1">日本円目安: 約 ¥{jpy_total_equity:,} <span class="text-slate-500">(@150円換算)</span></p>
             </div>
             <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
-                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">トータル損益 (Total Return)</p>
+                <p class="text-xs font-bold text-slate-300">📈 トータル損益（もうけ・損） <span class="hidden">Total Return</span></p>
                 <p class="text-2xl sm:text-3xl font-extrabold {return_color_class} mt-2 font-mono">
                     {return_sign}${total_return:.2f}
                 </p>
                 <p class="text-xs {return_color_class} mt-1 font-mono">
-                    損益率: {return_sign}{total_return_pct:.2f}% (累計元本 ${total_deposited:.2f})
+                    損益率: {return_sign}{total_return_pct:.2f}% （入金した元本合計 ${total_deposited:.2f}）
                 </p>
             </div>
             <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
-                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">現在の現金残高 (Cash)</p>
+                <p class="text-xs font-bold text-slate-300">💵 使える現金残高（買付余力） <span class="hidden">Cash</span></p>
                 <p class="text-2xl sm:text-3xl font-extrabold text-sky-400 mt-2 font-mono">${cash:.2f}</p>
-                <p class="text-xs text-slate-400 mt-1">約 ¥{jpy_cash:,} / キャッシュ比率 {cash_ratio_pct:.1f}%</p>
+                <p class="text-xs text-slate-400 mt-1">約 ¥{jpy_cash:,} / 現金の割合 {cash_ratio_pct:.1f}%</p>
             </div>
             <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
-                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">保有株評価額 &amp; 積立状況</p>
+                <p class="text-xs font-bold text-slate-300">🏢 持っている株の評価額</p>
                 <p class="text-2xl sm:text-3xl font-extrabold text-indigo-400 mt-2 font-mono">${holdings_val:.2f}</p>
-                <p class="text-xs text-slate-400 mt-1">保有銘柄数: {len(holdings)}銘柄 / 最終積立月: {html.escape(str(portfolio.get('last_deposit_month', '-')))}</p>
+                <p class="text-xs text-slate-400 mt-1">保有中の株: {len(holdings)}銘柄 / 最終積立月: {html.escape(str(portfolio.get('last_deposit_month', '-')))}</p>
             </div>
         </section>
 
-        <!-- ★新機能：オーナー（社長）指令室 ＆ 実売買報告パネル -->
+        <!-- 2. 本日のAI経営会議 最終提案・結論カード（最上部・強調表示） -->
+        <section class="bg-slate-900/95 border-2 {card_border} rounded-2xl p-6 shadow-2xl">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800 pb-4">
+                <div class="flex items-center gap-3">
+                    <span class="px-4 py-1.5 rounded-full text-sm font-extrabold border {badge_bg}">
+                        {action_label}
+                    </span>
+                    <div>
+                        <h2 class="text-lg sm:text-xl font-bold text-white">本日のAI経営会議 おすすめ方針・結論</h2>
+                        <p class="text-xs text-slate-400">{exec_note_str}</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-950/70 p-3 rounded-xl border border-slate-800 text-center">
+                    <div>
+                        <div class="text-[11px] text-slate-400">おすすめ銘柄</div>
+                        <div class="text-sm sm:text-base font-extrabold text-white">{ticker_display_str}</div>
+                    </div>
+                    <div>
+                        <div class="text-[11px] text-slate-400">株数（1株単位）</div>
+                        <div class="text-base font-extrabold text-white font-mono">{shares_int} 株</div>
+                    </div>
+                    <div>
+                        <div class="text-[11px] text-slate-400">1株あたりの株価</div>
+                        <div class="text-base font-extrabold text-white font-mono">${price_val:.2f}</div>
+                    </div>
+                    <div>
+                        <div class="text-[11px] text-slate-400">必要な合計金額</div>
+                        <div class="text-base font-extrabold text-emerald-400 font-mono">${total_amount_val:.2f}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SBI証券での手動注文ガイドメモ -->
+            <div class="mt-4 bg-indigo-950/40 border border-indigo-500/30 rounded-xl p-4">
+                <div class="flex items-center gap-2 text-indigo-300 font-bold text-sm mb-1">
+                    <span>📱 SBI証券（米国株アプリ/Web）での具体的な注文手順ガイド</span>
+                    <span class="text-xs font-normal text-indigo-400">（業種: {sector_ja_str}）</span>
+                </div>
+                <p class="text-sm text-slate-200 leading-relaxed whitespace-pre-line">{sbi_guide_str}</p>
+            </div>
+
+            {approval_button_html}
+        </section>
+
+        <!-- ★オーナー（社長）指令室 ＆ 実売買報告パネル -->
         <section class="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/40 border border-indigo-500/40 rounded-2xl p-6 shadow-xl">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-800 pb-4 mb-5">
                 <div class="flex items-center gap-2.5">
                     <span class="text-2xl">👑</span>
                     <div>
-                        <h2 class="text-lg font-extrabold text-white">オーナー（社長）指令室 ＆ 実売買報告パネル</h2>
+                        <h2 class="text-lg font-extrabold text-white">オーナー（社長）指令室 ＆ 売買報告パネル</h2>
                         <p class="text-xs text-slate-400">
-                            朝9時の自動会議以外でも、「今すぐ分析して！」の命令や、SBI証券で実際に売買した内容の報告・反映がいつでも行えます。
+                            毎朝9時の会議も、このボタンからの会議も、AIは「方針の提案」だけを行います。実際に買う・売るの決定ボタンを押すのはあなた（社長）です！
                         </p>
                     </div>
                 </div>
@@ -256,47 +436,47 @@ def generate_dashboard(
                     <div>
                         <div class="flex items-center justify-between mb-3">
                             <h3 class="text-sm font-bold text-sky-300 flex items-center gap-2">
-                                <span>🗣️ 1. AI社員に「今すぐ分析・会議」を命令する</span>
+                                <span>🗣️ 1. AI社員に「今すぐ分析・会議して！」と命令する</span>
                             </h3>
                             <span class="text-[11px] text-slate-400">所要時間: 約15〜20秒</span>
                         </div>
                         <p class="text-xs text-slate-400 mb-3">
-                            下のタグを押すか、自由な指示を入力して「会議を招集」を押すと、今すぐ最新株価を取ってきてAI社員4人が議論します。
+                            下のボタンを押すか指示を入力して「会議を招集」を押すと、AI社員4人が今すぐ最新株価とニュースを調べておすすめ方針を提案します（勝手に買われることはありません）。
                         </p>
 
                         <!-- ワンクリック定型命令タグ -->
                         <div class="flex flex-wrap gap-1.5 mb-3">
                             <button type="button" onclick="setPresetInstruction('今は売買せず、現在の保有株と注目候補銘柄の詳しい分析だけ報告して', true)"
                                 class="px-2.5 py-1 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
-                                📊 買わずに今すぐ分析だけ
+                                📊 今の市場と注目株を分析して
                             </button>
-                            <button type="button" onclick="setPresetInstruction('高配当ETF（SCHD）やS&P500（SPYM）など安定ETFを優先して検討して', false)"
+                            <button type="button" onclick="setPresetInstruction('高配当ETF（SCHD）やS&P500（SPYM）など安全なETFを優先しておすすめを提案して', false)"
                                 class="px-2.5 py-1 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
-                                🛡️ 安定ETF優先で会議
+                                🛡️ 安全なETF優先で提案して
                             </button>
-                            <button type="button" onclick="setPresetInstruction('現在保有している銘柄を売るべきか（利確・損切り）、継続保有すべきか重点的に診断して', true)"
+                            <button type="button" onclick="setPresetInstruction('現在持っている株を今売るべきか（利益確定・損切り）、持ち続けるべきか診断して', false)"
                                 class="px-2.5 py-1 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
-                                💰 保有株の売り時診断
+                                💰 持っている株の売り時を診断して
                             </button>
-                            <button type="button" onclick="setPresetInstruction('売られすぎ（RSIが低い）の押し目銘柄を中心に買い場を探して', false)"
+                            <button type="button" onclick="setPresetInstruction('値下がりしていて反発しそうな「お買い得（押し目）」の株を探して提案して', false)"
                                 class="px-2.5 py-1 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
-                                🚀 押し目買い候補を探す
+                                🚀 お買い得な押し目株を探して
                             </button>
                         </div>
 
                         <textarea id="ownerInstructionInput" rows="2"
-                            placeholder="例：今日は買わずに市場とNVDAの分析だけして / SCHDを優先して検討して（空欄でも実行可能）"
+                            placeholder="自由入力（例：エヌビディアとコカ・コーラどっちがいい？ / 配当が出る株を選んで）※空欄のままでも実行できます"
                             class="w-full rounded-xl bg-slate-900 border border-slate-700 text-slate-100 text-sm p-3 focus:outline-none focus:border-sky-500"></textarea>
 
                         <label class="flex items-center gap-2 mt-2.5 text-xs text-slate-300 cursor-pointer select-none">
                             <input type="checkbox" id="analysisOnlyCheck" class="rounded bg-slate-900 border-slate-700 text-sky-500 focus:ring-0">
-                            <span>今回は仮想売買を行わず「分析・相談のみ（HOLD固定）」で会議する</span>
+                            <span>買い・売りの提案は出さず「市場の解説だけ（様子見固定）」にする</span>
                         </label>
                     </div>
 
                     <button type="button" id="runMeetingBtn" onclick="triggerInstantMeeting()"
                         class="mt-4 w-full py-2.5 px-4 rounded-xl font-bold text-sm bg-sky-600 hover:bg-sky-500 text-white shadow-lg shadow-sky-900/40 transition flex items-center justify-center gap-2">
-                        <span>🚀 AI経営会議を今すぐ招集する</span>
+                        <span>🚀 AI社員を集めて今すぐ会議させる（方針提案のみ）</span>
                     </button>
                 </div>
 
@@ -305,62 +485,62 @@ def generate_dashboard(
                     <div>
                         <div class="flex items-center justify-between mb-3">
                             <h3 class="text-sm font-bold text-emerald-300 flex items-center gap-2">
-                                <span>📝 2.「実際に買った／売った／入金した」を報告する</span>
+                                <span>📝 2. 社長の決定・報告（「これ買ったよ／売ったよ」）</span>
                             </h3>
-                            <span class="text-[11px] text-slate-400">即時反映</span>
+                            <span class="text-[11px] text-slate-400">口座へ即時反映</span>
                         </div>
                         <p class="text-xs text-slate-400 mb-3">
-                            SBI証券で実際に株を買ったり売ったりした際にここから報告すると、保有株・現金残高に即反映され、次回からAIがその保有状況を前提に提案します。
+                            あなたがSBI証券で実際に買ったり売ったりした株をここで報告すると、下の「持っている株一覧」と「現金残高」に記録されます。
                         </p>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                             <div>
-                                <label class="block text-[11px] text-slate-400 mb-1">報告の種類</label>
+                                <label class="block text-[11px] text-slate-400 mb-1">どうしましたか？</label>
                                 <select id="reportActionSelect" onchange="toggleReportFields()"
                                     class="w-full rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-sm p-2 focus:outline-none focus:border-emerald-500">
-                                    <option value="BUY">🟢 株を買った（BUY報告）</option>
-                                    <option value="SELL">🔴 株を売った（SELL報告）</option>
+                                    <option value="BUY">🟢 株を買った（保有株に追加）</option>
+                                    <option value="SELL">🔴 株を売った（現金に戻す）</option>
                                     <option value="DEPOSIT">💵 現金を追加入金した（+$）</option>
                                 </select>
                             </div>
                             <div id="reportTickerWrap">
-                                <label class="block text-[11px] text-slate-400 mb-1">銘柄ティッカー（半角英字）</label>
+                                <label class="block text-[11px] text-slate-400 mb-1">どの銘柄ですか？（クリックで候補表示）</label>
                                 <input type="text" id="reportTickerInput" list="universeTickerList" placeholder="例: NVDA, SCHD, SPYM"
                                     class="w-full rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-sm p-2 uppercase font-mono focus:outline-none focus:border-emerald-500">
                                 <datalist id="universeTickerList">
-                                    <option value="SPYM">SPYM (S&amp;P500 ETF)</option>
-                                    <option value="SCHD">SCHD (高配当 ETF)</option>
-                                    <option value="QQQM">QQQM (NASDAQ100 ETF)</option>
-                                    <option value="VXUS">VXUS (全世界除く米国 ETF)</option>
-                                    <option value="VTI">VTI (全米株式 ETF)</option>
-                                    <option value="NVDA">NVDA (NVIDIA)</option>
-                                    <option value="AAPL">AAPL (Apple)</option>
-                                    <option value="MSFT">MSFT (Microsoft)</option>
-                                    <option value="GOOGL">GOOGL (Alphabet)</option>
-                                    <option value="AMZN">AMZN (Amazon)</option>
-                                    <option value="TSLA">TSLA (Tesla)</option>
-                                    <option value="META">META (Meta)</option>
-                                    <option value="KO">KO (Coca-Cola)</option>
-                                    <option value="PFE">PFE (Pfizer)</option>
-                                    <option value="VZ">VZ (Verizon)</option>
-                                    <option value="O">O (Realty Income)</option>
+                                    <option value="SPYM">SPYM（S&amp;P500 米国株ETF）</option>
+                                    <option value="SCHD">SCHD（米国高配当株ETF）</option>
+                                    <option value="QQQM">QQQM（ナスダック100 ETF）</option>
+                                    <option value="VXUS">VXUS（米国除く全世界株ETF）</option>
+                                    <option value="VTI">VTI（全米株式まるごとETF）</option>
+                                    <option value="NVDA">NVDA（エヌビディア）</option>
+                                    <option value="AAPL">AAPL（アップル）</option>
+                                    <option value="MSFT">MSFT（マイクロソフト）</option>
+                                    <option value="GOOGL">GOOGL（グーグル）</option>
+                                    <option value="AMZN">AMZN（アマゾン）</option>
+                                    <option value="TSLA">TSLA（テスラ）</option>
+                                    <option value="META">META（メタ / 旧Facebook）</option>
+                                    <option value="KO">KO（コカ・コーラ）</option>
+                                    <option value="PFE">PFE（ファイザー）</option>
+                                    <option value="VZ">VZ（ベライゾン）</option>
+                                    <option value="O">O（リアルティ・インカム）</option>
                                 </datalist>
                             </div>
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div id="reportSharesWrap">
-                                <label class="block text-[11px] text-slate-400 mb-1">株数（整数）</label>
+                                <label class="block text-[11px] text-slate-400 mb-1">何株ですか？（整数）</label>
                                 <input type="number" id="reportSharesInput" value="1" min="1" step="1"
                                     class="w-full rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-sm p-2 font-mono focus:outline-none focus:border-emerald-500">
                             </div>
                             <div>
-                                <label id="reportPriceLabel" class="block text-[11px] text-slate-400 mb-1">約定単価 (USD / 空欄で現在値)</label>
-                                <input type="number" id="reportPriceInput" placeholder="自動取得" min="0.01" step="0.01"
+                                <label id="reportPriceLabel" class="block text-[11px] text-slate-400 mb-1">1株の価格 (空欄なら自動取得)</label>
+                                <input type="number" id="reportPriceInput" placeholder="空欄で最新株価" min="0.01" step="0.01"
                                     class="w-full rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-sm p-2 font-mono focus:outline-none focus:border-emerald-500">
                             </div>
                             <div>
-                                <label class="block text-[11px] text-slate-400 mb-1">メモ（任意）</label>
+                                <label class="block text-[11px] text-slate-400 mb-1">ひとことメモ（任意）</label>
                                 <input type="text" id="reportNoteInput" placeholder="例: SBI証券NISAで買付"
                                     class="w-full rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-sm p-2 focus:outline-none focus:border-emerald-500">
                             </div>
@@ -369,59 +549,17 @@ def generate_dashboard(
 
                     <button type="button" id="submitReportBtn" onclick="submitManualTradeReport()"
                         class="mt-4 w-full py-2.5 px-4 rounded-xl font-bold text-sm bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/40 transition flex items-center justify-center gap-2">
-                        <span>✅ 売買・入金を報告してポートフォリオに反映</span>
+                        <span>✅ 決定！この内容を口座データに反映する</span>
                     </button>
                 </div>
-            </div>
-        </section>
-
-        <!-- 2. 本日の最終結論カード（最上部・強調表示） -->
-        <section class="bg-slate-900/95 border-2 {card_border} rounded-2xl p-6 shadow-2xl">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800 pb-4">
-                <div class="flex items-center gap-3">
-                    <span class="px-4 py-1.5 rounded-full text-sm font-extrabold border {badge_bg}">
-                        {action_label}
-                    </span>
-                    <div>
-                        <h2 class="text-lg sm:text-xl font-bold text-white">本日のAI経営会議 最終結論</h2>
-                        <p class="text-xs text-slate-400">{exec_note_str}</p>
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-950/70 p-3 rounded-xl border border-slate-800 text-center">
-                    <div>
-                        <div class="text-[11px] text-slate-400">対象ティッカー</div>
-                        <div class="text-base font-extrabold text-white font-mono">{ticker_str}</div>
-                    </div>
-                    <div>
-                        <div class="text-[11px] text-slate-400">売買株数 (整数)</div>
-                        <div class="text-base font-extrabold text-white font-mono">{shares_int} 株</div>
-                    </div>
-                    <div>
-                        <div class="text-[11px] text-slate-400">現在株価 (終値)</div>
-                        <div class="text-base font-extrabold text-white font-mono">${price_val:.2f}</div>
-                    </div>
-                    <div>
-                        <div class="text-[11px] text-slate-400">合計金額</div>
-                        <div class="text-base font-extrabold text-emerald-400 font-mono">${total_amount_val:.2f}</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SBI証券での手動注文ガイドメモ -->
-            <div class="mt-4 bg-indigo-950/40 border border-indigo-500/30 rounded-xl p-4">
-                <div class="flex items-center gap-2 text-indigo-300 font-bold text-sm mb-1">
-                    <span>📱 SBI証券（米国株アプリ/Web）手動注文操作ガイド</span>
-                    <span class="text-xs font-normal text-indigo-400">（セクター: {sector_str}）</span>
-                </div>
-                <p class="text-sm text-slate-200 leading-relaxed whitespace-pre-line">{sbi_guide_str}</p>
             </div>
         </section>
 
         <!-- 3. 4体のAI社員の経営会議ルーム -->
         <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg">
             <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <span>💬 AI社員の朝刊経営会議ルーム</span>
-                <span class="text-xs font-normal text-slate-400">（4エージェント合議ログ）</span>
+                <span>💬 AI社員4人の朝刊会議ルーム</span>
+                <span class="text-xs font-normal text-slate-400">（なぜその銘柄をおすすめしたのかの話し合いログ）</span>
             </h2>
             <div class="space-y-4">
                 <!-- ① 情報収集担当 -->
@@ -431,9 +569,9 @@ def generate_dashboard(
                     </div>
                     <div class="flex-1 bg-slate-950 border border-slate-800 rounded-2xl rounded-tl-none p-4">
                         <div class="flex items-center gap-2 mb-1.5">
-                            <span class="font-bold text-sm text-white">情報収集担当</span>
+                            <span class="font-bold text-sm text-white">ニュース調査担当</span>
                             <span class="px-2 py-0.5 text-[11px] rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 font-medium">
-                                News Researcher
+                                世界の経済ニュース・好悪材料の分析（情報収集担当）
                             </span>
                         </div>
                         <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-line">{researcher_text}</p>
@@ -447,9 +585,9 @@ def generate_dashboard(
                     </div>
                     <div class="flex-1 bg-slate-950 border border-slate-800 rounded-2xl rounded-tl-none p-4">
                         <div class="flex items-center gap-2 mb-1.5">
-                            <span class="font-bold text-sm text-white">テクニカル分析担当</span>
+                            <span class="font-bold text-sm text-white">チャート・数値分析担当</span>
                             <span class="px-2 py-0.5 text-[11px] rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-medium">
-                                Technical Analyst
+                                株価の割安度・買い時タイミングの計算（テクニカル分析担当）
                             </span>
                         </div>
                         <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-line">{analyst_text}</p>
@@ -463,9 +601,9 @@ def generate_dashboard(
                     </div>
                     <div class="flex-1 bg-slate-950 border border-amber-500/30 rounded-2xl rounded-tl-none p-4">
                         <div class="flex items-center gap-2 mb-1.5">
-                            <span class="font-bold text-sm text-white">ファンドマネージャー</span>
+                            <span class="font-bold text-sm text-white">ファンドマネージャー（投資判断リーダー）</span>
                             <span class="px-2 py-0.5 text-[11px] rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-medium">
-                                Fund Manager (最終意思決定)
+                                社長へのおすすめ方針提案
                             </span>
                         </div>
                         <p class="text-sm text-slate-200 leading-relaxed whitespace-pre-line">{manager_text}</p>
@@ -479,9 +617,9 @@ def generate_dashboard(
                     </div>
                     <div class="flex-1 bg-slate-950 border border-emerald-500/30 rounded-2xl rounded-tl-none p-4">
                         <div class="flex items-center gap-2 mb-1.5">
-                            <span class="font-bold text-sm text-white">執行・経理担当</span>
+                            <span class="font-bold text-sm text-white">資金・ルール管理担当（経理）</span>
                             <span class="px-2 py-0.5 text-[11px] rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium">
-                                Execution &amp; Accounting (物理検証・記帳)
+                                予算オーバーや危険な集中投資のチェック（執行・経理担当）
                             </span>
                         </div>
                         <p class="text-sm text-slate-200 leading-relaxed whitespace-pre-line">{accountant_text}</p>
@@ -494,7 +632,8 @@ def generate_dashboard(
         <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- セクター構成比ドーナツグラフ -->
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg">
-                <h3 class="text-base font-bold text-white mb-4">セクター構成比 (Cash含む)</h3>
+                <h3 class="text-base font-bold text-white mb-1">🍩 資産の内訳（業種別・現金の割合）</h3>
+                <p class="text-xs text-slate-400 mb-4">どの業種の株をどれくらい持っているか・現金がいくらかのバランスです</p>
                 <div class="relative h-64 flex items-center justify-center">
                     <canvas id="sectorChart"></canvas>
                 </div>
@@ -502,7 +641,8 @@ def generate_dashboard(
 
             <!-- 総資産推移折れ線グラフ -->
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg lg:col-span-2">
-                <h3 class="text-base font-bold text-white mb-4">総資産推移 vs 累計入金額 (USD)</h3>
+                <h3 class="text-base font-bold text-white mb-1">📈 資産の増え方グラフ（総資産 vs 入金した元本）</h3>
+                <p class="text-xs text-slate-400 mb-4">緑の実線（総資産）がグレーの点線（元本）より上にあればプラス（利益）です</p>
                 <div class="relative h-64">
                     <canvas id="equityChart"></canvas>
                 </div>
@@ -511,19 +651,19 @@ def generate_dashboard(
 
         <!-- 保有銘柄一覧テーブル -->
         <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg overflow-hidden">
-            <h2 class="text-lg font-bold text-white mb-4">保有銘柄一覧 (Current Holdings)</h2>
+            <h2 class="text-lg font-bold text-white mb-4">📋 現在持っている株の一覧</h2>
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
-                        <tr class="border-b border-slate-700 text-xs uppercase text-slate-400">
-                            <th class="py-3 px-4">ティッカー</th>
-                            <th class="py-3 px-4">セクター</th>
-                            <th class="py-3 px-4 text-right">保有株数</th>
-                            <th class="py-3 px-4 text-right">平均取得単価</th>
-                            <th class="py-3 px-4 text-right">現在株価</th>
-                            <th class="py-3 px-4 text-right">評価額</th>
-                            <th class="py-3 px-4 text-right">含み損益</th>
-                            <th class="py-3 px-4 text-right">構成比</th>
+                        <tr class="border-b border-slate-700 text-xs text-slate-400">
+                            <th class="py-3 px-4">銘柄名（ティッカー）</th>
+                            <th class="py-3 px-4">業種（セクター）</th>
+                            <th class="py-3 px-4 text-right">持っている株数</th>
+                            <th class="py-3 px-4 text-right">買った時の平均価格</th>
+                            <th class="py-3 px-4 text-right">今の株価</th>
+                            <th class="py-3 px-4 text-right">現在の価値合計</th>
+                            <th class="py-3 px-4 text-right">含み損益（もうけ）</th>
+                            <th class="py-3 px-4 text-right">資産に占める割合</th>
                         </tr>
                     </thead>
                     <tbody class="text-sm">
@@ -535,20 +675,20 @@ def generate_dashboard(
 
         <!-- 5. 売買履歴一覧テーブル -->
         <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg overflow-hidden">
-            <h2 class="text-lg font-bold text-white mb-4">直近売買・執行履歴 (Trade History)</h2>
+            <h2 class="text-lg font-bold text-white mb-4">🕒 これまでの会議提案・売買・入金の履歴</h2>
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
-                        <tr class="border-b border-slate-700 text-xs uppercase text-slate-400">
-                            <th class="py-3 px-4">実行日</th>
-                            <th class="py-3 px-4">アクション</th>
-                            <th class="py-3 px-4">ティッカー</th>
-                            <th class="py-3 px-4">セクター</th>
+                        <tr class="border-b border-slate-700 text-xs text-slate-400">
+                            <th class="py-3 px-4">日付</th>
+                            <th class="py-3 px-4">種類</th>
+                            <th class="py-3 px-4">銘柄名</th>
+                            <th class="py-3 px-4">業種</th>
                             <th class="py-3 px-4 text-right">株数</th>
-                            <th class="py-3 px-4 text-right">約定単価</th>
-                            <th class="py-3 px-4 text-right">約定金額</th>
-                            <th class="py-3 px-4 text-right">取引後現金</th>
-                            <th class="py-3 px-4">執行メモ</th>
+                            <th class="py-3 px-4 text-right">1株価格</th>
+                            <th class="py-3 px-4 text-right">合計金額</th>
+                            <th class="py-3 px-4 text-right">残った現金</th>
+                            <th class="py-3 px-4">内容メモ</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -560,7 +700,7 @@ def generate_dashboard(
     </main>
 
     <footer class="border-t border-slate-800 py-6 mt-12 text-center text-xs text-slate-500">
-        AI Investment Firm Simulation System — Powered by Python, yfinance &amp; Gemini 2.5 Flash
+        AI投資会社シミュレーションシステム — Powered by Python, yfinance &amp; Gemini Flash
     </footer>
 
     <!-- Chart.js 描画スクリプト -->
@@ -576,7 +716,7 @@ def generate_dashboard(
                 datasets: [{{
                     data: sectorValues,
                     backgroundColor: [
-                        '#10b981', '#38bdf8', '#a855f7', '#f59e0b',
+                        '#38bdf8', '#10b981', '#a855f7', '#f59e0b',
                         '#f43f5e', '#6366f1', '#14b8a6', '#64748b'
                     ],
                     borderColor: '#0f172a',
@@ -589,7 +729,17 @@ def generate_dashboard(
                 plugins: {{
                     legend: {{
                         position: 'bottom',
-                        labels: {{ color: '#cbd5e1', font: {{ size: 11 }} }}
+                        labels: {{ color: '#cbd5e1', font: {{ size: 12 }} }}
+                    }},
+                    tooltip: {{
+                        callbacks: {{
+                            label: function(ctx) {{
+                                const val = ctx.parsed || 0;
+                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+                                return ctx.label + ': $' + val.toFixed(2) + ' (' + pct + '%)';
+                            }}
+                        }}
                     }}
                 }}
             }}
@@ -606,7 +756,7 @@ def generate_dashboard(
                 labels: historyDates,
                 datasets: [
                     {{
-                        label: '総資産額 (Total Equity $)',
+                        label: '現在の総資産額 ($)',
                         data: historyEquity,
                         borderColor: '#10b981',
                         backgroundColor: 'rgba(16, 185, 129, 0.15)',
@@ -615,7 +765,7 @@ def generate_dashboard(
                         pointRadius: 4
                     }},
                     {{
-                        label: '累計入金額 (Invested Capital $)',
+                        label: '入金した元本合計 ($)',
                         data: historyDeposited,
                         borderColor: '#64748b',
                         borderDash: [5, 5],
@@ -648,7 +798,11 @@ def generate_dashboard(
 
         // =====================================================================
         // オーナー（社長）指令室 ＆ 実売買報告パネル 操作スクリプト
+        // file:// で直接開いている場合でも http://127.0.0.1:8000 のローカルサーバーへ自動接続する
         // =====================================================================
+        const API_BASE = (window.location.protocol.startsWith('http') && window.location.port === '8000')
+            ? ''
+            : 'http://127.0.0.1:8000';
         const statusBadge = document.getElementById('serverStatusBadge');
         const statusAlert = document.getElementById('ownerStatusAlert');
 
@@ -676,40 +830,68 @@ def generate_dashboard(
             if (act === 'DEPOSIT') {{
                 tickerWrap.classList.add('opacity-40', 'pointer-events-none');
                 sharesWrap.classList.add('opacity-40', 'pointer-events-none');
-                priceLabel.textContent = '追加入金額 (USD)';
+                priceLabel.textContent = '追加入金額 (ドル)';
                 priceInput.placeholder = '例: 100.00';
             }} else {{
                 tickerWrap.classList.remove('opacity-40', 'pointer-events-none');
                 sharesWrap.classList.remove('opacity-40', 'pointer-events-none');
-                priceLabel.textContent = '約定単価 (USD / 空欄で現在値)';
-                priceInput.placeholder = '自動取得';
+                priceLabel.textContent = '1株の価格 (空欄なら自動取得)';
+                priceInput.placeholder = '空欄で最新株価';
             }}
         }}
 
         async function checkLocalServer() {{
-            if (window.location.protocol === 'file:') {{
-                statusBadge.textContent = '📖 閲覧モード (start_dashboard.command で双方向モード起動)';
-                statusBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 self-start sm:self-center';
-                return false;
-            }}
             try {{
-                const res = await fetch('/api/ping');
+                const res = await fetch(API_BASE + '/api/ping');
                 if (res.ok) {{
-                    statusBadge.textContent = '🟢 社長室サーバー接続中（命令・売買報告 可能）';
+                    statusBadge.textContent = '🟢 社長室サーバー接続中（ボタン操作・決定 可能）';
                     statusBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 self-start sm:self-center';
                     return true;
                 }}
             }} catch (e) {{}}
-            statusBadge.textContent = '📖 Web閲覧モード（ローカルサーバー起動で命令可能）';
-            statusBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700 self-start sm:self-center';
+            statusBadge.textContent = '📖 閲覧モード (start_dashboard.command でボタン操作起動)';
+            statusBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 self-start sm:self-center';
             return false;
+        }}
+
+        async function approveAiProposal(action, ticker, shares, price) {{
+            const online = await checkLocalServer();
+            if (!online) {{
+                showOwnerAlert(
+                    '💡 <b>社長室サーバーが起動していません：</b><br>フォルダ内の <code>start_dashboard.command</code> をダブルクリックしてください！',
+                    true
+                );
+                return;
+            }}
+            showOwnerAlert('⏳ <b>AI提案（' + ticker + ' ' + shares + '株）を口座データへ反映しています...</b>', false);
+            try {{
+                const res = await fetch(API_BASE + '/api/manual_trade', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{
+                        action: action,
+                        ticker: ticker,
+                        shares: shares,
+                        price: price,
+                        note: 'AI提案を社長が承認・決定（' + ticker + ' ' + shares + '株 @ $' + price.toFixed(2) + '）'
+                    }})
+                }});
+                const data = await res.json();
+                if (!res.ok || data.status !== 'ok') {{
+                    throw new Error(data.message || '反映に失敗しました');
+                }}
+                showOwnerAlert('✅ <b>決定を反映しました！</b>（' + data.message + '）画面を更新します...', false);
+                setTimeout(() => window.location.reload(), 800);
+            }} catch (err) {{
+                showOwnerAlert('❌ エラー: ' + err.message, true);
+            }}
         }}
 
         async function triggerInstantMeeting() {{
             const online = await checkLocalServer();
             if (!online) {{
                 showOwnerAlert(
-                    '💡 <b>画面から直接AIへ命令するには：</b><br>フォルダ内の <code>start_dashboard.command</code> をダブルクリック（またはターミナルで <code>cd /Users/kasaiyuma/AI/ai-investment-firm && .venv/bin/python server.py</code> を実行）して開いた画面（<code>http://127.0.0.1:8000</code>）からボタンを押してください！',
+                    '💡 <b>社長室サーバーが起動していません：</b><br>フォルダ内の <code>start_dashboard.command</code> をダブルクリックしてください！',
                     true
                 );
                 return;
@@ -720,10 +902,10 @@ def generate_dashboard(
             const btn = document.getElementById('runMeetingBtn');
             btn.disabled = true;
             btn.innerHTML = '<span>⏳ AI社員4人が最新株価を取得して会議中... (約15〜20秒)</span>';
-            showOwnerAlert('⏳ <b>AI経営会議を実行中です...</b> 50銘柄の最新データ取得とGemini AI合議を行っています。そのまま20秒ほどお待ちください。', false);
+            showOwnerAlert('⏳ <b>AI経営会議を実行中です...</b> 50銘柄の最新データ取得とGemini AI合議を行っています（勝手に売買は行いません）。そのまま20秒ほどお待ちください。', false);
 
             try {{
-                const res = await fetch('/api/meeting', {{
+                const res = await fetch(API_BASE + '/api/meeting', {{
                     method: 'POST',
                     headers: {{ 'Content-Type': 'application/json' }},
                     body: JSON.stringify({{ instruction: instruction, analysis_only: analysisOnly }})
@@ -732,12 +914,12 @@ def generate_dashboard(
                 if (!res.ok || data.status !== 'ok') {{
                     throw new Error(data.message || '会議の実行に失敗しました');
                 }}
-                showOwnerAlert('✅ <b>AI経営会議が完了しました！</b> 最新結果へ画面を更新します...', false);
+                showOwnerAlert('✅ <b>AI経営会議が完了し、新しい方針提案が届きました！</b> 画面を更新します...', false);
                 setTimeout(() => window.location.reload(), 800);
             }} catch (err) {{
                 showOwnerAlert('❌ エラー: ' + err.message, true);
                 btn.disabled = false;
-                btn.innerHTML = '<span>🚀 AI経営会議を今すぐ招集する</span>';
+                btn.innerHTML = '<span>🚀 AI社員を集めて今すぐ会議させる（方針提案のみ）</span>';
             }}
         }}
 
@@ -745,7 +927,7 @@ def generate_dashboard(
             const online = await checkLocalServer();
             if (!online) {{
                 showOwnerAlert(
-                    '💡 <b>売買・入金を画面から直接反映するには：</b><br>フォルダ内の <code>start_dashboard.command</code> をダブルクリック（またはターミナルで <code>cd /Users/kasaiyuma/AI/ai-investment-firm && .venv/bin/python server.py</code> を実行）して開いた画面（<code>http://127.0.0.1:8000</code>）からボタンを押してください！',
+                    '💡 <b>社長室サーバーが起動していません：</b><br>フォルダ内の <code>start_dashboard.command</code> をダブルクリックしてください！',
                     true
                 );
                 return;
@@ -759,16 +941,16 @@ def generate_dashboard(
             const note = document.getElementById('reportNoteInput').value.trim();
 
             if (action !== 'DEPOSIT' && !ticker) {{
-                showOwnerAlert('⚠️ 銘柄ティッカー（例: NVDA, SCHD, SPYM）を入力してください。', true);
+                showOwnerAlert('⚠️ 銘柄ティッカー（例: NVDA, SCHD, SPYM）を入力または選択してください。', true);
                 return;
             }}
 
             const btn = document.getElementById('submitReportBtn');
             btn.disabled = true;
-            btn.innerHTML = '<span>⏳ ポートフォリオへ反映中...</span>';
+            btn.innerHTML = '<span>⏳ 口座データへ反映中...</span>';
 
             try {{
-                const res = await fetch('/api/manual_trade', {{
+                const res = await fetch(API_BASE + '/api/manual_trade', {{
                     method: 'POST',
                     headers: {{ 'Content-Type': 'application/json' }},
                     body: JSON.stringify({{
@@ -788,7 +970,7 @@ def generate_dashboard(
             }} catch (err) {{
                 showOwnerAlert('❌ エラー: ' + err.message, true);
                 btn.disabled = false;
-                btn.innerHTML = '<span>✅ 売買・入金を報告してポートフォリオに反映</span>';
+                btn.innerHTML = '<span>✅ 決定！この内容を口座データに反映する</span>';
             }}
         }}
 
