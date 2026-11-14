@@ -6,8 +6,113 @@
     <title>AI投資会社 | 朝刊ダッシュボード＆社長室</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @keyframes spinSlow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @keyframes spinReverse {
+            from { transform: rotate(360deg); }
+            to { transform: rotate(0deg); }
+        }
+        @keyframes shimmerMove {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .ring-spin-slow {
+            animation: spinSlow 2.6s linear infinite;
+        }
+        .ring-spin-reverse {
+            animation: spinReverse 1.9s linear infinite;
+        }
+        .progress-shimmer {
+            background: linear-gradient(90deg, #10b981 0%, #38bdf8 50%, #6366f1 100%);
+            background-size: 200% 100%;
+            animation: shimmerMove 2.2s linear infinite;
+        }
+    </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased">
+    <!-- ★ フルスクリーン・スタイリッシュAIローディングオーバーレイ -->
+    <div id="aiLoadingOverlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/85 backdrop-blur-md px-4 transition-opacity duration-300">
+        <div class="relative w-full max-w-lg rounded-3xl bg-gradient-to-b from-slate-900/95 via-slate-900 to-slate-950 border border-sky-500/40 p-6 sm:p-8 shadow-[0_0_60px_rgba(14,165,233,0.25)] overflow-hidden">
+            <!-- 背景の淡いネオン装飾 -->
+            <div class="pointer-events-none absolute -top-24 -left-24 w-48 h-48 rounded-full bg-sky-500/15 blur-3xl"></div>
+            <div class="pointer-events-none absolute -bottom-24 -right-24 w-48 h-48 rounded-full bg-emerald-500/15 blur-3xl"></div>
+
+            <!-- デュアル回転ネオンリング＆中央アイコン -->
+            <div class="relative mx-auto w-24 h-24 flex items-center justify-center mb-5">
+                <div class="absolute inset-0 rounded-full border-4 border-slate-800"></div>
+                <div class="absolute inset-0 rounded-full border-4 border-transparent border-t-emerald-400 border-r-sky-400 ring-spin-slow shadow-[0_0_20px_rgba(56,189,248,0.4)]"></div>
+                <div class="absolute inset-2.5 rounded-full border-4 border-transparent border-b-indigo-400 border-l-emerald-300 ring-spin-reverse"></div>
+                <div id="loadingCenterIcon" class="text-3xl select-none animate-pulse">🤖</div>
+            </div>
+
+            <!-- タイトル・サブテキスト -->
+            <div class="text-center">
+                <div class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-bold bg-sky-500/15 text-sky-300 border border-sky-500/30 mb-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                    <span id="loadingBadgeText">AI INVESTMENT BOARDROOM LIVE</span>
+                </div>
+                <h3 id="loadingTitle" class="text-lg sm:text-xl font-extrabold text-white tracking-tight">
+                    AI社員4人が緊急経営会議を行っています...
+                </h3>
+                <p id="loadingSubtitle" class="text-xs text-slate-400 mt-1">
+                    米国市場データの取得とGemini AI合議を実行中です（所要目安：約15〜20秒）
+                </p>
+            </div>
+
+            <!-- プログレスバー＆経過秒数 -->
+            <div class="mt-5">
+                <div class="flex items-center justify-between text-xs font-mono mb-1.5">
+                    <span id="loadingStepSummary" class="text-sky-300 font-semibold">STEP 1 / 4 実行中...</span>
+                    <div class="flex items-center gap-3">
+                        <span id="loadingTimer" class="text-slate-400">0.0 秒</span>
+                        <span id="loadingPercent" class="text-emerald-400 font-bold">8%</span>
+                    </div>
+                </div>
+                <div class="w-full h-2.5 bg-slate-800/90 rounded-full overflow-hidden p-0.5 border border-slate-700/70">
+                    <div id="loadingProgressBar" class="h-full rounded-full progress-shimmer transition-all duration-300" style="width: 8%"></div>
+                </div>
+            </div>
+
+            <!-- 4ステップ・ライブ進行インジケーター -->
+            <div id="loadingStepsContainer" class="mt-5 space-y-2 text-left">
+                <div id="loadStep1" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-sky-500/50 bg-sky-950/30 text-xs transition-all">
+                    <div class="flex items-center gap-2.5">
+                        <span id="loadStep1Icon" class="text-base">⏳</span>
+                        <span class="font-bold text-white">1. 米国50銘柄＋5大ETFの最新株価・ニュース取得</span>
+                    </div>
+                    <span id="loadStep1State" class="text-[11px] font-mono text-sky-300 font-bold">進行中...</span>
+                </div>
+                <div id="loadStep2" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-900/50 text-xs opacity-50 transition-all">
+                    <div class="flex items-center gap-2.5">
+                        <span id="loadStep2Icon" class="text-base">📊</span>
+                        <span class="font-medium text-slate-200">2. RSI・移動平均線・出来高による有望株スクリーニング</span>
+                    </div>
+                    <span id="loadStep2State" class="text-[11px] font-mono text-slate-400">待機中</span>
+                </div>
+                <div id="loadStep3" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-900/50 text-xs opacity-50 transition-all">
+                    <div class="flex items-center gap-2.5">
+                        <span id="loadStep3Icon" class="text-base">💬</span>
+                        <span class="font-medium text-slate-200">3. 4人のAI社員（調査・技術・FM）が徹底議論中</span>
+                    </div>
+                    <span id="loadStep3State" class="text-[11px] font-mono text-slate-400">待機中</span>
+                </div>
+                <div id="loadStep4" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-900/50 text-xs opacity-50 transition-all">
+                    <div class="flex items-center gap-2.5">
+                        <span id="loadStep4Icon" class="text-base">🛡️</span>
+                        <span class="font-medium text-slate-200">4. 35%リスク制限チェック＆社長向け提案シート作成</span>
+                    </div>
+                    <span id="loadStep4State" class="text-[11px] font-mono text-slate-400">待機中</span>
+                </div>
+            </div>
+
+            <p class="text-[11px] text-center text-slate-400 mt-4">
+                ※ 勝手に株が売買されることはありません。完了すると自動で画面が切り替わります。
+            </p>
+        </div>
+    </div>
     <!-- ヘッダーバー -->
     <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-30">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -24,7 +129,7 @@
             </div>
             <div class="text-left sm:text-right text-xs text-slate-400 font-mono">
                 <div>分析した米国市場の日付: <span class="text-slate-200 font-semibold">2026-11-13</span></div>
-                <div>画面の最終更新日時: <span class="text-slate-200">2026-11-14T19:02:08+09:00</span></div>
+                <div>画面の最終更新日時: <span class="text-slate-200">2026-11-14T19:09:48+09:00</span></div>
             </div>
         </div>
     </header>
@@ -54,30 +159,30 @@
             <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
                 <p class="text-xs font-bold text-slate-300">🏢 持っている株の評価額</p>
                 <p class="text-2xl sm:text-3xl font-extrabold text-indigo-400 mt-2 font-mono">$0.00</p>
-                <p class="text-xs text-slate-400 mt-1">保有中の株: 0銘柄 / 最終積立月: 2026-11</p>
+                <p class="text-xs text-slate-400 mt-1">保有中の株: 1銘柄 / 最終積立月: 2026-11</p>
             </div>
         </section>
 
         <!-- 2. 本日のAI経営会議 最終提案・結論カード（最上部・強調表示） -->
-        <section class="bg-slate-900/95 border-2 border-emerald-500/50 rounded-2xl p-6 shadow-2xl">
+        <section class="bg-slate-900/95 border-2 border-slate-600/60 rounded-2xl p-6 shadow-2xl">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800 pb-4">
                 <div class="flex items-center gap-3">
-                    <span class="px-4 py-1.5 rounded-full text-sm font-extrabold border bg-emerald-500/20 text-emerald-300 border-emerald-500/40">
-                        BUY（現物買付の提案）
+                    <span class="px-4 py-1.5 rounded-full text-sm font-extrabold border bg-slate-500/20 text-slate-300 border-slate-500/40">
+                        HOLD（現金温存・見送り）
                     </span>
                     <div>
                         <h2 class="text-lg sm:text-xl font-bold text-white">本日のAI経営会議 おすすめ方針・結論</h2>
-                        <p class="text-xs text-slate-400">【社長の決定待ち】AI提案: NVDA 1株 @ $162.85（合計 $162.85）の買付方針を提案</p>
+                        <p class="text-xs text-slate-400"></p>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-950/70 p-3 rounded-xl border border-slate-800 text-center">
                     <div>
                         <div class="text-[11px] text-slate-400">おすすめ銘柄</div>
-                        <div class="text-sm sm:text-base font-extrabold text-white">NVDA（エヌビディア）</div>
+                        <div class="text-sm sm:text-base font-extrabold text-white">なし（見送り）</div>
                     </div>
                     <div>
                         <div class="text-[11px] text-slate-400">株数（1株単位）</div>
-                        <div class="text-base font-extrabold text-white font-mono">1 株</div>
+                        <div class="text-base font-extrabold text-white font-mono">0 株</div>
                     </div>
                     <div>
                         <div class="text-[11px] text-slate-400">1株あたりの株価</div>
@@ -85,7 +190,7 @@
                     </div>
                     <div>
                         <div class="text-[11px] text-slate-400">必要な合計金額</div>
-                        <div class="text-base font-extrabold text-emerald-400 font-mono">$162.85</div>
+                        <div class="text-base font-extrabold text-emerald-400 font-mono">$0.00</div>
                     </div>
                 </div>
             </div>
@@ -100,16 +205,6 @@
             </div>
 
             
-        <div class="mt-4 pt-4 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div class="text-xs text-amber-300 font-medium">
-                👑 <b>社長（あなた）の最終決定待ち：</b>AIは方針を提案した段階です。実際に買付したら右のボタンを押すと口座残高に反映されます。
-            </div>
-            <button type="button" onclick="approveAiProposal('BUY', 'NVDA', 1, 162.85)"
-                class="bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/50 text-white font-extrabold text-sm px-5 py-2.5 rounded-xl shadow-lg transition shrink-0 flex items-center justify-center gap-2">
-                <span>✅ このAI提案通りに決定する（NVDA 1株の買付を反映）</span>
-            </button>
-        </div>
-        
         </section>
 
         <!-- ★オーナー（社長）指令室 ＆ 実売買報告パネル -->
@@ -324,8 +419,7 @@
                                 予算オーバーや危険な集中投資のチェック（執行・経理担当）
                             </span>
                         </div>
-                        <p class="text-sm text-slate-200 leading-relaxed whitespace-pre-line">【資金・ルール検証OK（社長の最終決定待ち）】NVDA 1株 @ $162.85（合計 $162.85）は現金残高（$330.00）およびリスク管理ルールをクリアしています。
-AI会議では「方針の提案」までを行い、まだ口座の現金は動かしていません。実際に購入される場合は、上の「✅ このAI提案通りに決定する」ボタンを押してください。</p>
+                        <p class="text-sm text-slate-200 leading-relaxed whitespace-pre-line"></p>
                     </div>
                 </div>
             </div>
@@ -371,12 +465,19 @@ AI会議では「方針の提案」までを行い、まだ口座の現金は動
                     </thead>
                     <tbody class="text-sm">
                         
-            <tr>
-                <td colspan="8" class="py-8 text-center text-slate-400">
-                    現在持っている株はありません（全額 現金で温存中）
-                </td>
-            </tr>
-            
+                <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition">
+                    <td class="py-3 px-4 font-bold text-white">NVDA（エヌビディア）</td>
+                    <td class="py-3 px-4 text-slate-300 text-xs">IT・半導体（テクノロジー）</td>
+                    <td class="py-3 px-4 text-right font-mono">1株</td>
+                    <td class="py-3 px-4 text-right font-mono">$162.85</td>
+                    <td class="py-3 px-4 text-right font-mono">$162.85</td>
+                    <td class="py-3 px-4 text-right font-mono font-semibold text-white">$162.85</td>
+                    <td class="py-3 px-4 text-right font-mono text-emerald-400">
+                        +0.00 (+0.00%)
+                    </td>
+                    <td class="py-3 px-4 text-right font-mono text-slate-300">49.3%</td>
+                </tr>
+                
                     </tbody>
                 </table>
             </div>
@@ -404,6 +505,18 @@ AI会議では「方針の提案」までを行い、まだ口座の現金は動
                         
                 <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition text-sm">
                     <td class="py-3 px-4 font-mono text-slate-300">2026-11-14</td>
+                    <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">買付 (BUY)</span></td>
+                    <td class="py-3 px-4 font-bold text-white">NVDA（エヌビディア）</td>
+                    <td class="py-3 px-4 text-slate-400 text-xs">IT・半導体（テクノロジー）</td>
+                    <td class="py-3 px-4 text-right font-mono">1株</td>
+                    <td class="py-3 px-4 text-right font-mono">$162.85</td>
+                    <td class="py-3 px-4 text-right font-mono font-semibold text-white">$162.85</td>
+                    <td class="py-3 px-4 text-right font-mono text-slate-300">$167.15</td>
+                    <td class="py-3 px-4 text-slate-300 text-xs">AI提案を社長が承認・決定（NVDA 1株 @ $162.85）</td>
+                </tr>
+                
+                <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition text-sm">
+                    <td class="py-3 px-4 font-mono text-slate-300">2026-11-14</td>
                     <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-600/30 text-slate-300 border border-slate-600/40">見送り / 提案</span></td>
                     <td class="py-3 px-4 font-bold text-white">なし（見送り）</td>
                     <td class="py-3 px-4 text-slate-400 text-xs">IT・半導体（テクノロジー）</td>
@@ -426,8 +539,8 @@ AI会議では「方針の提案」までを行い、まだ口座の現金は動
 
     <!-- Chart.js 描画スクリプト -->
     <script>
-        const sectorLabels = ["使える現金（ドル）"];
-        const sectorValues = [330.0];
+        const sectorLabels = ["IT・半導体（テクノロジー）", "使える現金（ドル）"];
+        const sectorValues = [162.85, 330.0];
 
         const ctxSector = document.getElementById('sectorChart').getContext('2d');
         new Chart(ctxSector, {
@@ -561,6 +674,142 @@ AI会議では「方針の提案」までを行い、まだ口座の現金は動
             }
         }
 
+        // =====================================================================
+        // スタイリッシュ・フルスクリーンAIローディングオーバーレイ制御
+        // =====================================================================
+        let loadingTimerId = null;
+        let loadingStartMs = 0;
+
+        function setStepVisual(stepNum, status) {
+            const row = document.getElementById('loadStep' + stepNum);
+            const icon = document.getElementById('loadStep' + stepNum + 'Icon');
+            const state = document.getElementById('loadStep' + stepNum + 'State');
+            if (!row || !icon || !state) return;
+
+            const defaultIcons = { 1: '🌎', 2: '📊', 3: '💬', 4: '🛡️' };
+            if (status === 'done') {
+                row.className = 'flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-emerald-500/40 bg-emerald-950/25 text-xs transition-all';
+                icon.textContent = '✅';
+                state.textContent = '完了';
+                state.className = 'text-[11px] font-mono text-emerald-400 font-bold';
+            } else if (status === 'active') {
+                row.className = 'flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-sky-500/60 bg-sky-950/40 text-xs shadow-[0_0_20px_rgba(14,165,233,0.18)] transition-all';
+                icon.textContent = '⏳';
+                state.textContent = '実行中...';
+                state.className = 'text-[11px] font-mono text-sky-300 font-bold animate-pulse';
+            } else {
+                row.className = 'flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-900/50 text-xs opacity-50 transition-all';
+                icon.textContent = defaultIcons[stepNum] || '⏳';
+                state.textContent = '待機中';
+                state.className = 'text-[11px] font-mono text-slate-400';
+            }
+        }
+
+        function startLoadingOverlay(mode = 'meeting', customTitle = '', customSub = '') {
+            const overlay = document.getElementById('aiLoadingOverlay');
+            const titleEl = document.getElementById('loadingTitle');
+            const subEl = document.getElementById('loadingSubtitle');
+            const badgeEl = document.getElementById('loadingBadgeText');
+            const centerIcon = document.getElementById('loadingCenterIcon');
+            const stepsContainer = document.getElementById('loadingStepsContainer');
+            const stepSummary = document.getElementById('loadingStepSummary');
+            const timerEl = document.getElementById('loadingTimer');
+            const pctEl = document.getElementById('loadingPercent');
+            const barEl = document.getElementById('loadingProgressBar');
+
+            if (loadingTimerId) clearInterval(loadingTimerId);
+            loadingStartMs = Date.now();
+
+            if (mode === 'trade') {
+                centerIcon.textContent = '👑';
+                badgeEl.textContent = 'PORTFOLIO SYNCING';
+                titleEl.textContent = customTitle || '社長の決定を口座データへ反映しています...';
+                subEl.textContent = customSub || '保有株・現金残高・最新ダッシュボードを更新中です';
+                stepsContainer.classList.add('hidden');
+            } else {
+                centerIcon.textContent = '🤖';
+                badgeEl.textContent = 'AI INVESTMENT BOARDROOM LIVE';
+                titleEl.textContent = customTitle || 'AI社員4人が緊急経営会議を行っています...';
+                subEl.textContent = customSub || '米国50銘柄の最新データ取得とGemini AI合議を実行中です（約15〜20秒）';
+                stepsContainer.classList.remove('hidden');
+                setStepVisual(1, 'active');
+                setStepVisual(2, 'pending');
+                setStepVisual(3, 'pending');
+                setStepVisual(4, 'pending');
+            }
+
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+
+            loadingTimerId = setInterval(() => {
+                const elapsedSec = (Date.now() - loadingStartMs) / 1000;
+                timerEl.textContent = elapsedSec.toFixed(1) + ' 秒';
+
+                if (mode === 'trade') {
+                    const pct = Math.min(92, Math.round(25 + elapsedSec * 25));
+                    pctEl.textContent = pct + '%';
+                    barEl.style.width = pct + '%';
+                    stepSummary.textContent = '口座データ・グラフ更新中...';
+                    return;
+                }
+
+                // 20秒想定のスムーズな進捗演出（最大95%で完了待機）
+                const pct = Math.min(95, Math.max(6, Math.round((1 - Math.exp(-elapsedSec / 9.5)) * 100)));
+                pctEl.textContent = pct + '%';
+                barEl.style.width = pct + '%';
+
+                if (elapsedSec < 4.2) {
+                    stepSummary.textContent = 'STEP 1 / 4 : 米国市場データ取得中...';
+                    setStepVisual(1, 'active');
+                    setStepVisual(2, 'pending');
+                    setStepVisual(3, 'pending');
+                    setStepVisual(4, 'pending');
+                } else if (elapsedSec < 8.5) {
+                    stepSummary.textContent = 'STEP 2 / 4 : テクニカル指標スクリーニング中...';
+                    setStepVisual(1, 'done');
+                    setStepVisual(2, 'active');
+                    setStepVisual(3, 'pending');
+                    setStepVisual(4, 'pending');
+                } else if (elapsedSec < 15.0) {
+                    stepSummary.textContent = 'STEP 3 / 4 : AI社員4人が徹底議論中...';
+                    setStepVisual(1, 'done');
+                    setStepVisual(2, 'done');
+                    setStepVisual(3, 'active');
+                    setStepVisual(4, 'pending');
+                } else {
+                    stepSummary.textContent = 'STEP 4 / 4 : 最終提案シート作成中...';
+                    setStepVisual(1, 'done');
+                    setStepVisual(2, 'done');
+                    setStepVisual(3, 'done');
+                    setStepVisual(4, 'active');
+                }
+            }, 100);
+        }
+
+        function stopLoadingOverlay(isSuccess = true, doneTitle = '') {
+            if (loadingTimerId) {
+                clearInterval(loadingTimerId);
+                loadingTimerId = null;
+            }
+            const overlay = document.getElementById('aiLoadingOverlay');
+            if (!isSuccess) {
+                overlay.classList.add('hidden');
+                overlay.classList.remove('flex');
+                return;
+            }
+            document.getElementById('loadingCenterIcon').textContent = '✨';
+            document.getElementById('loadingPercent').textContent = '100%';
+            document.getElementById('loadingProgressBar').style.width = '100%';
+            document.getElementById('loadingStepSummary').textContent = 'COMPLETE! 画面を更新します...';
+            if (doneTitle) {
+                document.getElementById('loadingTitle').textContent = doneTitle;
+            }
+            setStepVisual(1, 'done');
+            setStepVisual(2, 'done');
+            setStepVisual(3, 'done');
+            setStepVisual(4, 'done');
+        }
+
         async function checkLocalServer() {
             try {
                 const res = await fetch(API_BASE + '/api/ping');
@@ -584,6 +833,7 @@ AI会議では「方針の提案」までを行い、まだ口座の現金は動
                 );
                 return;
             }
+            startLoadingOverlay('trade', 'AI提案（' + ticker + ' ' + shares + '株）を決定・反映中...', '保有株データと現金残高を最新状態に更新しています');
             showOwnerAlert('⏳ <b>AI提案（' + ticker + ' ' + shares + '株）を口座データへ反映しています...</b>', false);
             try {
                 const res = await fetch(API_BASE + '/api/manual_trade', {
@@ -601,9 +851,11 @@ AI会議では「方針の提案」までを行い、まだ口座の現金は動
                 if (!res.ok || data.status !== 'ok') {
                     throw new Error(data.message || '反映に失敗しました');
                 }
+                stopLoadingOverlay(true, '✅ 社長の決定を口座データに反映しました！');
                 showOwnerAlert('✅ <b>決定を反映しました！</b>（' + data.message + '）画面を更新します...', false);
-                setTimeout(() => window.location.reload(), 800);
+                setTimeout(() => window.location.reload(), 700);
             } catch (err) {
+                stopLoadingOverlay(false);
                 showOwnerAlert('❌ エラー: ' + err.message, true);
             }
         }
@@ -623,6 +875,11 @@ AI会議では「方針の提案」までを行い、まだ口座の現金は動
             const btn = document.getElementById('runMeetingBtn');
             btn.disabled = true;
             btn.innerHTML = '<span>⏳ AI社員4人が最新株価を取得して会議中... (約15〜20秒)</span>';
+            startLoadingOverlay(
+                'meeting',
+                instruction ? '社長の指示でAI社員4人が緊急会議中...' : 'AI社員4人が最新データで経営会議中...',
+                instruction ? '指示内容：「' + instruction + '」' : '米国50銘柄の最新データ取得とGemini AI合議を実行中です（約15〜20秒）'
+            );
             showOwnerAlert('⏳ <b>AI経営会議を実行中です...</b> 50銘柄の最新データ取得とGemini AI合議を行っています（勝手に売買は行いません）。そのまま20秒ほどお待ちください。', false);
 
             try {
@@ -635,9 +892,11 @@ AI会議では「方針の提案」までを行い、まだ口座の現金は動
                 if (!res.ok || data.status !== 'ok') {
                     throw new Error(data.message || '会議の実行に失敗しました');
                 }
+                stopLoadingOverlay(true, '✅ AI経営会議が完了！新しい提案が届きました');
                 showOwnerAlert('✅ <b>AI経営会議が完了し、新しい方針提案が届きました！</b> 画面を更新します...', false);
-                setTimeout(() => window.location.reload(), 800);
+                setTimeout(() => window.location.reload(), 700);
             } catch (err) {
+                stopLoadingOverlay(false);
                 showOwnerAlert('❌ エラー: ' + err.message, true);
                 btn.disabled = false;
                 btn.innerHTML = '<span>🚀 AI社員を集めて今すぐ会議させる（方針提案のみ）</span>';
@@ -669,6 +928,7 @@ AI会議では「方針の提案」までを行い、まだ口座の現金は動
             const btn = document.getElementById('submitReportBtn');
             btn.disabled = true;
             btn.innerHTML = '<span>⏳ 口座データへ反映中...</span>';
+            startLoadingOverlay('trade', '売買・入金報告を口座データへ反映中...', '最新株価の照合とポートフォリオの再計算を行っています');
 
             try {
                 const res = await fetch(API_BASE + '/api/manual_trade', {
@@ -686,9 +946,11 @@ AI会議では「方針の提案」までを行い、まだ口座の現金は動
                 if (!res.ok || data.status !== 'ok') {
                     throw new Error(data.message || '報告の反映に失敗しました');
                 }
+                stopLoadingOverlay(true, '✅ 口座データの更新が完了しました！');
                 showOwnerAlert('✅ <b>' + data.message + '</b> 画面を最新状態に更新します...', false);
-                setTimeout(() => window.location.reload(), 800);
+                setTimeout(() => window.location.reload(), 700);
             } catch (err) {
+                stopLoadingOverlay(false);
                 showOwnerAlert('❌ エラー: ' + err.message, true);
                 btn.disabled = false;
                 btn.innerHTML = '<span>✅ 決定！この内容を口座データに反映する</span>';
