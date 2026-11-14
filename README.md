@@ -26,13 +26,14 @@
 
 ```text
 ai-investment-firm/
-├── documents/                           # 設計書・テスト仕様書一式（日本語）
+├── documents/                           # 設計書・テスト仕様書・操作マニュアル一式（日本語）
 │   ├── 01_requirements_definition.md    # 要件定義書
 │   ├── 02_basic_design.md               # 基本設計書
 │   ├── 03_detailed_design.md            # 詳細設計書
 │   ├── 04_unit_test_spec.md             # 単体テスト仕様書
 │   ├── 05_integration_test_spec.md      # 結合テスト仕様書
-│   └── 06_scenario_test_spec.md         # シナリオテスト仕様書
+│   ├── 06_scenario_test_spec.md         # シナリオテスト仕様書
+│   └── 07_user_manual.md                # ★初心者向け：使い方・画面の見方ガイド（図解付き）
 ├── tests/                               # pytest 自動テストコード一式
 │   ├── test_unit.py
 │   ├── test_integration.py

@@ -1,2 +1,2 @@
 date,market_date,action,ticker,sector,shares,price,total_amount,cash_after,total_equity_after,note
-2026-11-14,2026-11-13,HOLD,NONE,-,0,0.00,0.00,330.00,330.00,AI決定通り現金温存（HOLD）
+2026-11-14,2026-11-13,BUY,NVDA,Technology,1,162.85,162.85,167.15,330.00,"初期特例（総資産$1,000未満・未保有新規1株）適用により NVDA 1株を買付約定"

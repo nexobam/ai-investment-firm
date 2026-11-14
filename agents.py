@@ -139,26 +139,46 @@ def run_ai_meeting(prompt_text: str) -> MeetingDecision:
             manager_reason="[Mock] APIキー未設定のため安全に現金温存（HOLD）とします。",
             sbi_order_guide="本日の注文はありません（現金温存）。"
         )
-    try:
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt_text,
-            config=types.GenerateContentConfig(
+    candidate_models = [
+        "gemini-2.5-flash",
+        "gemini-3.5-flash",
+        "gemini-3.7-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-2.5-flash-lite",
+        "gemini-3.8-flash",
+    ]
+    last_exc: Exception | None = None
+    for model_name in candidate_models:
+        try:
+            client = genai.Client(api_key=api_key)
+            gen_config = types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=MeetingDecision,
                 temperature=0.2,
-            ),
-        )
-        return MeetingDecision.model_validate_json(response.text)
-    except Exception as exc:
-        logger.warning("Gemini API呼び出し例外のため安全にHOLDへフォールバックします: %s", exc)
-        return MeetingDecision(
-            action="HOLD",
-            ticker="NONE",
-            shares=0,
-            researcher_comment="[Fallback] 外部AI通信エラーまたはレート制限のためニュース評価をスキップしました。",
-            analyst_comment="[Fallback] テクニカル指標は算出済みですが、AI会議通信エラーのため中立評価とします。",
-            manager_reason=f"[Fallback] API通信例外（{type(exc).__name__}）が発生したため、安全第一で現金温存（HOLD）とします。",
-            sbi_order_guide="本日の注文はありません（システム安全保護による現金温存）。",
-        )
+                http_options=types.HttpOptions(
+                    timeout=15000,
+                    retry_options=types.HttpRetryOptions(attempts=1),
+                ),
+            )
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt_text,
+                config=gen_config,
+            )
+            logger.info("Geminiモデル (%s) から応答を取得しました。", model_name)
+            return MeetingDecision.model_validate_json(response.text)
+        except Exception as exc:
+            last_exc = exc
+            logger.warning("モデル %s 呼び出し失敗（次候補へ切替）: %s", model_name, exc)
+            continue
+
+    logger.warning("全Geminiモデル呼び出し例外のため安全にHOLDへフォールバックします: %s", last_exc)
+    return MeetingDecision(
+        action="HOLD",
+        ticker="NONE",
+        shares=0,
+        researcher_comment="[Fallback] 外部AI通信エラーまたはレート制限のためニュース評価をスキップしました。",
+        analyst_comment="[Fallback] テクニカル指標は算出済みですが、AI会議通信エラーのため中立評価とします。",
+        manager_reason=f"[Fallback] API通信例外（{type(last_exc).__name__ if last_exc else 'Unknown'}）が発生したため、安全第一で現金温存（HOLD）とします。",
+        sbi_order_guide="本日の注文はありません（システム安全保護による現金温存）。",
+    )
