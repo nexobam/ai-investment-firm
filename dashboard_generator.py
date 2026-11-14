@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from agents import MeetingDecision
+from screener import FALLBACK_PRICES
 
 USD_TO_JPY_RATE: float = 150.0
 
@@ -435,20 +436,161 @@ def generate_dashboard(
     )
     sbi_guide_str = html.escape(decision.sbi_order_guide or "本日の注文はありません。")
 
-    # 社長決裁ボタン（AIがBUYまたはSELLを提案している場合にワンクリックで承認・反映できるボタン）
+    # 全銘柄の参照株価マップ（フロントエンドでの自動計算＆ワンクリック銘柄選択用）
+    known_prices: dict[str, float] = {k: float(v) for k, v in FALLBACK_PRICES.items()}
+    for k, v in (execution_result.get("all_prices") or {}).items():
+        if float(v or 0.0) > 0:
+            known_prices[str(k).upper()] = round(float(v), 2)
+    for c in (execution_result.get("candidates") or []):
+        c_tkr = str(c.get("ticker", "")).upper()
+        c_prc = float(c.get("price", c.get("close", 0.0)) or 0.0)
+        if c_tkr and c_prc > 0:
+            known_prices[c_tkr] = round(c_prc, 2)
+    for t_held, h_held in (portfolio.get("holdings") or {}).items():
+        h_prc = float(h_held.get("current_price", h_held.get("avg_cost", 0.0)) or 0.0)
+        if h_prc > 0:
+            known_prices[str(t_held).upper()] = round(h_prc, 2)
+    if raw_ticker not in ("NONE", "CASH", "") and price_val > 0:
+        known_prices[raw_ticker] = round(price_val, 2)
+
+    # AIの追加提案＋一次スクリーニング上位候補（複数銘柄まとめ買い・比較用リスト）
+    multi_candidates: list[dict[str, Any]] = []
+    seen_multi: set[str] = set()
+    if display_action in ("BUY", "SELL") and raw_ticker not in ("NONE", "CASH", "") and shares_int >= 1:
+        seen_multi.add(raw_ticker)
+        multi_candidates.append(
+            {
+                "action": display_action,
+                "ticker": raw_ticker,
+                "name_ja": to_ticker_display(raw_ticker),
+                "shares": shares_int,
+                "price": price_val,
+                "reason": "👑 AI第1提案（メイン推奨）",
+                "checked": True,
+            }
+        )
+    for sub in getattr(decision, "additional_proposals", []) or []:
+        s_tkr = str(getattr(sub, "ticker", "") or "").upper().strip()
+        s_act = str(getattr(sub, "action", "BUY") or "BUY").upper().strip()
+        s_sh = max(1, int(getattr(sub, "shares", 1) or 1))
+        if s_tkr and s_tkr not in ("NONE", "CASH") and s_tkr not in seen_multi:
+            s_prc = known_prices.get(s_tkr, 50.0)
+            seen_multi.add(s_tkr)
+            multi_candidates.append(
+                {
+                    "action": s_act if s_act in ("BUY", "SELL") else "BUY",
+                    "ticker": s_tkr,
+                    "name_ja": to_ticker_display(s_tkr),
+                    "shares": s_sh,
+                    "price": s_prc,
+                    "reason": str(getattr(sub, "reason_short", "") or "✨ AI同時おすすめ候補"),
+                    "checked": False,
+                }
+            )
+    for c in (execution_result.get("candidates") or [])[:5]:
+        c_tkr = str(c.get("ticker", "")).upper().strip()
+        if c_tkr and c_tkr not in seen_multi:
+            c_prc = round(float(c.get("price", c.get("close", known_prices.get(c_tkr, 50.0)))), 2)
+            seen_multi.add(c_tkr)
+            multi_candidates.append(
+                {
+                    "action": "BUY",
+                    "ticker": c_tkr,
+                    "name_ja": to_ticker_display(c_tkr),
+                    "shares": 1,
+                    "price": c_prc,
+                    "reason": f"📊 スクリーニング上位（RSI {float(c.get('rsi_14', 50.0)):.1f}）",
+                    "checked": False,
+                }
+            )
+
+    # 社長決裁エリア（株数の自由変更ステッパー ＆ 複数銘柄まとめて一括決定機能付き）
     approval_button_html = ""
     if display_action in ("BUY", "SELL") and raw_ticker not in ("NONE", "CASH", "") and shares_int >= 1:
         btn_color = "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/50" if display_action == "BUY" else "bg-rose-600 hover:bg-rose-500 shadow-rose-900/50"
         act_word = "買付" if display_action == "BUY" else "売却"
-        approval_button_html = f"""
-        <div class="mt-4 pt-4 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div class="text-xs text-amber-300 font-medium">
-                👑 <b>社長（あなた）の最終決定待ち：</b>AIは方針を提案した段階です。実際に{act_word}したら右のボタンを押すと口座残高に反映されます。
+
+        multi_rows_html = ""
+        for idx, mc in enumerate(multi_candidates[:4]):
+            mc_tkr = html.escape(mc["ticker"])
+            mc_name = html.escape(mc["name_ja"])
+            mc_act = html.escape(mc["action"])
+            mc_sh = int(mc["shares"])
+            mc_prc = float(mc["price"])
+            mc_reason = html.escape(mc["reason"])
+            mc_chk = "checked" if mc["checked"] else ""
+            act_pill = (
+                '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">買い</span>'
+                if mc_act == "BUY"
+                else '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">売り</span>'
+            )
+            multi_rows_html += f"""
+            <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition">
+                <label class="flex items-center gap-2.5 cursor-pointer select-none min-w-0 flex-1">
+                    <input type="checkbox" class="multi-prop-check w-4 h-4 rounded bg-slate-950 border-slate-600 text-emerald-500 focus:ring-0"
+                        data-idx="{idx}" data-action="{mc_act}" data-ticker="{mc_tkr}" data-price="{mc_prc:.2f}" onchange="updateMultiProposalSummary()" {mc_chk}>
+                    {act_pill}
+                    <span class="font-bold text-xs sm:text-sm text-white truncate">{mc_name}</span>
+                    <span class="text-[11px] text-slate-400 hidden sm:inline">（{mc_reason}）</span>
+                </label>
+                <div class="flex items-center gap-2 shrink-0">
+                    <span class="text-xs font-mono text-slate-300">${mc_prc:.2f}/株</span>
+                    <div class="flex items-center bg-slate-950 border border-slate-700 rounded-lg overflow-hidden">
+                        <button type="button" onclick="stepMultiShare({idx}, -1)" class="px-2 py-1 text-xs font-bold text-slate-300 hover:bg-slate-800">−</button>
+                        <input type="number" id="multiPropShares_{idx}" value="{mc_sh}" min="1" step="1" onchange="updateMultiProposalSummary()"
+                            class="w-11 text-center bg-transparent text-white text-xs font-mono font-bold focus:outline-none">
+                        <button type="button" onclick="stepMultiShare({idx}, 1)" class="px-2 py-1 text-xs font-bold text-slate-300 hover:bg-slate-800">＋</button>
+                    </div>
+                    <span id="multiPropSub_{idx}" class="text-xs font-mono font-bold text-emerald-400 w-16 text-right">${mc_prc * mc_sh:.2f}</span>
+                </div>
             </div>
-            <button type="button" onclick="approveAiProposal('{display_action}', '{raw_ticker_escaped}', {shares_int}, {price_val:.2f})"
-                class="{btn_color} text-white font-extrabold text-sm px-5 py-2.5 rounded-xl shadow-lg transition shrink-0 flex items-center justify-center gap-2">
-                <span>✅ このAI提案通りに決定する（{raw_ticker_escaped} {shares_int}株の{act_word}を反映）</span>
-            </button>
+            """
+
+        approval_button_html = f"""
+        <div class="mt-4 pt-4 border-t border-slate-800 space-y-4">
+            <!-- 1銘柄でも複数株（2株・3株）にすぐ変更して決定できるメインバー -->
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 bg-slate-950/80 p-3.5 rounded-2xl border border-emerald-500/30">
+                <div class="text-xs text-amber-300 font-medium">
+                    👑 <b>社長の最終決定（株数の変更・複数株買いもOK）：</b><br>
+                    <span class="text-slate-300">1株だけでなく「− / ＋」で2株・3株に増やして決定したり、下のリストから複数銘柄をまとめて決定できます！</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+                    <div class="flex items-center gap-1.5 bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5">
+                        <span class="text-[11px] text-slate-400">株数:</span>
+                        <button type="button" onclick="adjustMainProposalShares(-1, {price_val:.2f})" class="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs">−</button>
+                        <input type="number" id="mainProposalSharesInput" value="{shares_int}" min="1" step="1"
+                            onchange="adjustMainProposalShares(0, {price_val:.2f})"
+                            class="w-12 text-center bg-transparent text-white font-mono font-extrabold text-sm focus:outline-none">
+                        <button type="button" onclick="adjustMainProposalShares(1, {price_val:.2f})" class="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs">＋</button>
+                        <span class="text-xs text-slate-300">株</span>
+                    </div>
+                    <button type="button" onclick="approveMainProposalWithCustomShares('{display_action}', '{raw_ticker_escaped}', {price_val:.2f})"
+                        class="{btn_color} text-white font-extrabold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+                        <span id="mainProposalApproveBtnText">✅ このAI提案を決定（{raw_ticker_escaped} {shares_int}株 = ${total_amount_val:.2f}）</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 複数銘柄の同時選択・まとめ買いボックス -->
+            <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2.5">
+                    <div class="text-xs font-bold text-sky-300 flex items-center gap-1.5">
+                        <span>🧺 複数銘柄・複数株をまとめて決定したい場合（チェックを入れて一括反映）</span>
+                    </div>
+                    <div id="multiProposalTotalBadge" class="text-xs font-mono text-emerald-300 font-bold">
+                        選択中: 1銘柄（合計 ${total_amount_val:.2f} / 残り現金目安 ${max(0.0, cash - total_amount_val):.2f}）
+                    </div>
+                </div>
+                <div class="space-y-2 mb-3">
+                    {multi_rows_html}
+                </div>
+                <div class="flex justify-end">
+                    <button type="button" onclick="approveSelectedMultiProposals()"
+                        class="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs px-4 py-2 rounded-xl shadow transition flex items-center gap-1.5">
+                        <span>✅ チェックした銘柄・株数をまとめて口座データに反映する</span>
+                    </button>
+                </div>
+            </div>
         </div>
         """
 
@@ -523,6 +665,62 @@ def generate_dashboard(
     sector_totals["使える現金（ドル）"] = round(cash, 2)
     sector_labels_json = json.dumps(list(sector_totals.keys()), ensure_ascii=False)
     sector_values_json = json.dumps(list(sector_totals.values()))
+
+    # ワンクリック銘柄選択ボタン＆プルダウン生成（キーボード入力不要で選べるUI用）
+    quick_buy_tickers: list[str] = []
+    for mc in multi_candidates:
+        if mc["ticker"] not in quick_buy_tickers:
+            quick_buy_tickers.append(mc["ticker"])
+    for default_tkr in ["SCHD", "SPYM", "KO", "NVDA", "OXY", "KHC", "QQQM", "VXUS"]:
+        if default_tkr not in quick_buy_tickers:
+            quick_buy_tickers.append(default_tkr)
+
+    quick_buy_chips_list: list[str] = []
+    for qt in quick_buy_tickers[:8]:
+        q_prc = known_prices.get(qt, 50.0)
+        q_disp = html.escape(to_ticker_display(qt))
+        quick_buy_chips_list.append(
+            f'<button type="button" onclick="selectQuickTicker(\'{html.escape(qt)}\', {q_prc:.2f}, 1)" '
+            f'class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 hover:bg-emerald-900/60 text-slate-200 hover:text-emerald-200 border border-slate-700 hover:border-emerald-500/50 transition">'
+            f'{q_disp} <span class="text-emerald-400 font-mono">${q_prc:.2f}</span></button>'
+        )
+    quick_buy_chips_html = "\n".join(quick_buy_chips_list)
+
+    quick_sell_chips_list: list[str] = []
+    held_shares_map: dict[str, int] = {}
+    if holdings:
+        for ht, hh in holdings.items():
+            h_sh = int(hh.get("shares", 0))
+            held_shares_map[ht] = h_sh
+            h_prc = float(hh.get("current_price", hh.get("avg_cost", known_prices.get(ht, 50.0))))
+            h_disp = html.escape(to_ticker_display(ht))
+            quick_sell_chips_list.append(
+                f'<button type="button" onclick="selectQuickTicker(\'{html.escape(ht)}\', {h_prc:.2f}, {h_sh})" '
+                f'class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-rose-950/60 hover:bg-rose-900/80 text-rose-200 border border-rose-500/40 transition">'
+                f'💼 {h_disp}（保有:{h_sh}株 @ ${h_prc:.2f}）を選ぶ</button>'
+            )
+    else:
+        quick_sell_chips_list.append(
+            '<span class="text-xs text-slate-400">※ 現在保有している株はありません</span>'
+        )
+    quick_sell_chips_html = "\n".join(quick_sell_chips_list)
+
+    universe_options_list: list[str] = [
+        '<option value="">▼ ここをクリックして全55銘柄の一覧から選ぶ（入力不要）</option>'
+    ]
+    for t_code, t_ja in TICKER_NAME_JA_MAP.items():
+        if t_code in ("CASH", "NONE"):
+            continue
+        t_prc = known_prices.get(t_code, 0.0)
+        prc_str = f"（目安 ${t_prc:.2f}）" if t_prc > 0 else ""
+        universe_options_list.append(
+            f'<option value="{html.escape(t_code)}">{html.escape(t_code)}：{html.escape(t_ja)}{prc_str}</option>'
+        )
+    universe_select_options_html = "\n".join(universe_options_list)
+
+    known_prices_json = json.dumps(known_prices)
+    held_shares_json = json.dumps(held_shares_map)
+    ticker_ja_json = json.dumps(TICKER_NAME_JA_MAP, ensure_ascii=False)
 
     # 総資産推移データ
     asset_history: list[dict[str, Any]] = portfolio.get("asset_history", [])
@@ -845,8 +1043,16 @@ def generate_dashboard(
                             下のボタンを押すか指示を入力して「会議を招集」を押すと、AI社員4人が今すぐ最新株価とニュースを調べておすすめ方針を提案します（勝手に買われることはありません）。
                         </p>
 
-                        <!-- ワンクリック定型命令タグ -->
+                        <!-- ワンクリック定型命令タグ（複数銘柄・まとめ買い指示も追加） -->
                         <div class="flex flex-wrap gap-1.5 mb-3">
+                            <button type="button" onclick="setPresetInstruction('予算内で2〜3銘柄に分散して、複数銘柄・複数株の買い組み合わせプランを提案して', false)"
+                                class="px-2.5 py-1 rounded-lg text-xs bg-emerald-950/70 hover:bg-emerald-900 text-emerald-200 border border-emerald-500/40 font-bold transition">
+                                🧺 予算内で2〜3銘柄をまとめ買い提案して
+                            </button>
+                            <button type="button" onclick="setPresetInstruction('1株あたりが安くて優秀な株やETFを、複数株（2〜4株など）まとめて買うプランを提案して', false)"
+                                class="px-2.5 py-1 rounded-lg text-xs bg-sky-950/70 hover:bg-sky-900 text-sky-200 border border-sky-500/40 font-bold transition">
+                                📦 お手頃な株を複数株まとめて提案して
+                            </button>
                             <button type="button" onclick="setPresetInstruction('今は売買せず、現在の保有株と注目候補銘柄の詳しい分析だけ報告して', true)"
                                 class="px-2.5 py-1 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
                                 📊 今の市場と注目株を分析して
@@ -865,8 +1071,8 @@ def generate_dashboard(
                             </button>
                         </div>
 
-                        <textarea id="ownerInstructionInput" rows="2"
-                            placeholder="自由入力（例：エヌビディアとコカ・コーラどっちがいい？ / 配当が出る株を選んで）※空欄のままでも実行できます"
+                        <textarea id="ownerInstructionInput" rows="3"
+                            placeholder="自由入力（例：OXYとSCHDを両方買いたいけど何株ずつがいい？ / エヌビディアを売って別の株にすべき？）※空欄のままでも実行できます"
                             class="w-full rounded-xl bg-slate-900 border border-slate-700 text-slate-100 text-sm p-3 focus:outline-none focus:border-sky-500"></textarea>
 
                         <label class="flex items-center gap-2 mt-2.5 text-xs text-slate-300 cursor-pointer select-none">
@@ -876,81 +1082,122 @@ def generate_dashboard(
                     </div>
 
                     <button type="button" id="runMeetingBtn" onclick="triggerInstantMeeting()"
-                        class="mt-4 w-full py-2.5 px-4 rounded-xl font-bold text-sm bg-sky-600 hover:bg-sky-500 text-white shadow-lg shadow-sky-900/40 transition flex items-center justify-center gap-2">
+                        class="mt-4 w-full py-3 px-4 rounded-xl font-extrabold text-sm bg-sky-600 hover:bg-sky-500 text-white shadow-lg shadow-sky-900/40 transition flex items-center justify-center gap-2">
                         <span>🚀 AI社員を集めて今すぐ会議させる（方針提案のみ）</span>
                     </button>
                 </div>
 
-                <!-- 右パネル：実際に買った・売った・入金した報告 -->
+                <!-- 右パネル：実際に買った・売った・入金した報告（文字入力不要＆複数株・複数銘柄まとめ対応） -->
                 <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center justify-between mb-3">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
                             <h3 class="text-sm font-bold text-emerald-300 flex items-center gap-2">
-                                <span>📝 2. 社長の決定・報告（「これ買ったよ／売ったよ」）</span>
+                                <span>📝 2. 社長の決定・報告（「これ買った／売った／複数まとめ」）</span>
                             </h3>
-                            <span class="text-[11px] text-slate-400">口座へ即時反映</span>
+                            <span class="text-[11px] font-mono text-sky-300">使える現金: ${cash:.2f}</span>
                         </div>
-                        <p class="text-xs text-slate-400 mb-3">
-                            あなたがSBI証券で実際に買ったり売ったりした株をここで報告すると、下の「持っている株一覧」と「現金残高」に記録されます。
-                        </p>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                            <div>
-                                <label class="block text-[11px] text-slate-400 mb-1">どうしましたか？</label>
-                                <select id="reportActionSelect" onchange="toggleReportFields()"
-                                    class="w-full rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-sm p-2 focus:outline-none focus:border-emerald-500">
-                                    <option value="BUY">🟢 株を買った（保有株に追加）</option>
-                                    <option value="SELL">🔴 株を売った（現金に戻す）</option>
-                                    <option value="DEPOSIT">💵 現金を追加入金した（+$）</option>
+                        <!-- STEP A: どうしましたか？（大きな3択タブボタン） -->
+                        <div>
+                            <label class="block text-[11px] text-slate-400 mb-1">① なにをしましたか？（ボタンで選択）</label>
+                            <select id="reportActionSelect" onchange="toggleReportFields()" class="hidden">
+                                <option value="BUY">BUY</option>
+                                <option value="SELL">SELL</option>
+                                <option value="DEPOSIT">DEPOSIT</option>
+                            </select>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button type="button" id="actBtn_BUY" onclick="setReportActionMode('BUY')"
+                                    class="py-2 px-2 rounded-xl text-xs font-extrabold border-2 border-emerald-500 bg-emerald-500/20 text-emerald-200 transition">
+                                    🟢 株を買った
+                                </button>
+                                <button type="button" id="actBtn_SELL" onclick="setReportActionMode('SELL')"
+                                    class="py-2 px-2 rounded-xl text-xs font-bold border border-slate-700 bg-slate-900 text-slate-400 hover:text-white transition">
+                                    🔴 株を売った
+                                </button>
+                                <button type="button" id="actBtn_DEPOSIT" onclick="setReportActionMode('DEPOSIT')"
+                                    class="py-2 px-2 rounded-xl text-xs font-bold border border-slate-700 bg-slate-900 text-slate-400 hover:text-white transition">
+                                    💵 現金を入金
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- STEP B: 銘柄をワンクリック選択 または 一覧から選択 -->
+                        <div id="reportTickerWrap" class="space-y-2">
+                            <!-- 買うときのワンクリック注目銘柄ボタン -->
+                            <div id="quickBuyChipsBox">
+                                <div class="text-[11px] text-slate-400 mb-1">② どの銘柄ですか？（ボタンを押すだけで自動入力されます）</div>
+                                <div class="flex flex-wrap gap-1.5">
+                                    {quick_buy_chips_html}
+                                </div>
+                            </div>
+                            <!-- 売るときの保有株ワンクリックボタン -->
+                            <div id="quickSellChipsBox" class="hidden">
+                                <div class="text-[11px] text-rose-300 font-bold mb-1">② どの保有株を売りましたか？（押すだけで保有株数も自動セット）</div>
+                                <div class="flex flex-wrap gap-1.5">
+                                    {quick_sell_chips_html}
+                                </div>
+                            </div>
+
+                            <!-- 55銘柄の日本語一覧プルダウン ＋ 直接入力欄 -->
+                            <div class="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                                <select id="quickUniverseSelect" onchange="onSelectUniverseDropdown(this.value)"
+                                    class="sm:col-span-3 w-full rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-xs p-2 focus:outline-none focus:border-emerald-500">
+                                    {universe_select_options_html}
                                 </select>
-                            </div>
-                            <div id="reportTickerWrap">
-                                <label class="block text-[11px] text-slate-400 mb-1">どの銘柄ですか？（クリックで候補表示）</label>
-                                <input type="text" id="reportTickerInput" list="universeTickerList" placeholder="例: NVDA, SCHD, SPYM"
-                                    class="w-full rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-sm p-2 uppercase font-mono focus:outline-none focus:border-emerald-500">
-                                <datalist id="universeTickerList">
-                                    <option value="SPYM">SPYM（S&amp;P500 米国株ETF）</option>
-                                    <option value="SCHD">SCHD（米国高配当株ETF）</option>
-                                    <option value="QQQM">QQQM（ナスダック100 ETF）</option>
-                                    <option value="VXUS">VXUS（米国除く全世界株ETF）</option>
-                                    <option value="VTI">VTI（全米株式まるごとETF）</option>
-                                    <option value="NVDA">NVDA（エヌビディア）</option>
-                                    <option value="AAPL">AAPL（アップル）</option>
-                                    <option value="MSFT">MSFT（マイクロソフト）</option>
-                                    <option value="GOOGL">GOOGL（グーグル）</option>
-                                    <option value="AMZN">AMZN（アマゾン）</option>
-                                    <option value="TSLA">TSLA（テスラ）</option>
-                                    <option value="META">META（メタ / 旧Facebook）</option>
-                                    <option value="KO">KO（コカ・コーラ）</option>
-                                    <option value="PFE">PFE（ファイザー）</option>
-                                    <option value="VZ">VZ（ベライゾン）</option>
-                                    <option value="O">O（リアルティ・インカム）</option>
-                                </datalist>
+                                <input type="text" id="reportTickerInput" oninput="updateLiveTradeCalc()" placeholder="直接入力(例: NVDA)"
+                                    class="sm:col-span-2 w-full rounded-lg bg-slate-900 border border-slate-700 text-white text-xs p-2 uppercase font-mono font-bold focus:outline-none focus:border-emerald-500">
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div id="reportSharesWrap">
-                                <label class="block text-[11px] text-slate-400 mb-1">何株ですか？（整数）</label>
-                                <input type="number" id="reportSharesInput" value="1" min="1" step="1"
-                                    class="w-full rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-sm p-2 font-mono focus:outline-none focus:border-emerald-500">
+                        <!-- STEP C: 株数ステッパー（複数株対応）＆ 単価 ＆ メモ -->
+                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+                            <div id="reportSharesWrap" class="sm:col-span-6">
+                                <label class="block text-[11px] text-slate-400 mb-1">③ 株数（複数株まとめ買いOK）</label>
+                                <div class="flex items-center gap-1">
+                                    <button type="button" onclick="stepReportShares(-1)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs border border-slate-700">−1</button>
+                                    <input type="number" id="reportSharesInput" value="1" min="1" step="1" oninput="updateLiveTradeCalc()"
+                                        class="w-14 text-center rounded-lg bg-slate-900 border border-slate-700 text-white text-sm p-1.5 font-mono font-extrabold focus:outline-none focus:border-emerald-500">
+                                    <button type="button" onclick="stepReportShares(1)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs border border-slate-700">＋1</button>
+                                    <button type="button" onclick="stepReportShares(2)" class="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 font-bold text-[11px] border border-slate-700">＋2</button>
+                                    <button type="button" onclick="setMaxReportShares()" class="px-2 py-1.5 rounded-lg bg-indigo-950 hover:bg-indigo-900 text-indigo-200 font-bold text-[11px] border border-indigo-500/40">最大</button>
+                                </div>
                             </div>
-                            <div>
-                                <label id="reportPriceLabel" class="block text-[11px] text-slate-400 mb-1">1株の価格 (空欄なら自動取得)</label>
-                                <input type="number" id="reportPriceInput" placeholder="空欄で最新株価" min="0.01" step="0.01"
-                                    class="w-full rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-sm p-2 font-mono focus:outline-none focus:border-emerald-500">
+                            <div class="sm:col-span-3">
+                                <label id="reportPriceLabel" class="block text-[11px] text-slate-400 mb-1">1株の価格($)</label>
+                                <input type="number" id="reportPriceInput" placeholder="自動取得" min="0.01" step="0.01" oninput="updateLiveTradeCalc()"
+                                    class="w-full rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-xs p-2 font-mono focus:outline-none focus:border-emerald-500">
                             </div>
-                            <div>
-                                <label class="block text-[11px] text-slate-400 mb-1">ひとことメモ（任意）</label>
-                                <input type="text" id="reportNoteInput" placeholder="例: SBI証券NISAで買付"
-                                    class="w-full rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-sm p-2 focus:outline-none focus:border-emerald-500">
+                            <div class="sm:col-span-3">
+                                <label class="block text-[11px] text-slate-400 mb-1">メモ（任意）</label>
+                                <input type="text" id="reportNoteInput" placeholder="NISA等"
+                                    class="w-full rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-xs p-2 focus:outline-none focus:border-emerald-500">
                             </div>
+                        </div>
+
+                        <!-- リアルタイム計算プレビュー ＆ 複数銘柄カート追加ボタン -->
+                        <div class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-900/90 border border-slate-800 text-xs">
+                            <div id="liveTradeCostPreview" class="text-slate-300 font-mono">
+                                💡 銘柄ボタンを押すと合計金額と残り現金が自動計算されます
+                            </div>
+                            <button type="button" id="addBatchBtn" onclick="addCurrentToTradeCart()"
+                                class="px-2.5 py-1 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 font-bold text-[11px] transition">
+                                ➕ まとめリストに追加（別銘柄も続けて選ぶ）
+                            </button>
+                        </div>
+
+                        <!-- 複数銘柄まとめリスト（2銘柄以上選んだ時に表示） -->
+                        <div id="tradeCartBox" class="hidden p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/40 space-y-2">
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="font-bold text-indigo-200">🧺 まとめ報告リスト（複数売買を一括反映）</span>
+                                <button type="button" onclick="clearTradeCart()" class="text-[11px] text-rose-300 hover:underline">すべてクリア</button>
+                            </div>
+                            <div id="tradeCartItems" class="space-y-1 text-xs"></div>
                         </div>
                     </div>
 
                     <button type="button" id="submitReportBtn" onclick="submitManualTradeReport()"
-                        class="mt-4 w-full py-2.5 px-4 rounded-xl font-bold text-sm bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/40 transition flex items-center justify-center gap-2">
-                        <span>✅ 決定！この内容を口座データに反映する</span>
+                        class="mt-4 w-full py-3 px-4 rounded-xl font-extrabold text-sm bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/40 transition flex items-center justify-center gap-2">
+                        <span id="submitReportBtnText">✅ 決定！この内容を口座データに反映する</span>
                     </button>
                 </div>
             </div>
@@ -1380,6 +1627,11 @@ def generate_dashboard(
             : 'http://127.0.0.1:8000';
         const statusBadge = document.getElementById('serverStatusBadge');
         const statusAlert = document.getElementById('ownerStatusAlert');
+        const KNOWN_PRICES = {known_prices_json};
+        const HELD_SHARES = {held_shares_json};
+        const TICKER_JA_MAP = {ticker_ja_json};
+        const CURRENT_CASH = {cash:.2f};
+        let tradeCart = [];
 
         function showOwnerAlert(message, isError = false) {{
             statusAlert.classList.remove('hidden', 'bg-rose-950/60', 'border-rose-500/50', 'text-rose-200', 'bg-emerald-950/60', 'border-emerald-500/50', 'text-emerald-200', 'bg-sky-950/60', 'border-sky-500/50', 'text-sky-200');
@@ -1396,22 +1648,312 @@ def generate_dashboard(
             document.getElementById('analysisOnlyCheck').checked = analysisOnly;
         }}
 
+        // ---------------------------------------------------------------------
+        // 上部AI提案カード：株数変更ステッパー ＆ 複数銘柄まとめて一括決定
+        // ---------------------------------------------------------------------
+        function adjustMainProposalShares(delta, unitPrice) {{
+            const inp = document.getElementById('mainProposalSharesInput');
+            if (!inp) return;
+            let val = parseInt(inp.value || '1', 10) + delta;
+            if (isNaN(val) || val < 1) val = 1;
+            inp.value = val;
+            const total = (val * unitPrice).toFixed(2);
+            const btnText = document.getElementById('mainProposalApproveBtnText');
+            if (btnText) {{
+                const tkr = '{raw_ticker_escaped}';
+                btnText.textContent = '✅ このAI提案を決定（' + tkr + ' ' + val + '株 = $' + total + '）';
+            }}
+        }}
+
+        async function approveMainProposalWithCustomShares(action, ticker, price) {{
+            const inp = document.getElementById('mainProposalSharesInput');
+            const shares = inp ? Math.max(1, parseInt(inp.value || '1', 10)) : 1;
+            await approveAiProposal(action, ticker, shares, price);
+        }}
+
+        function stepMultiShare(idx, delta) {{
+            const inp = document.getElementById('multiPropShares_' + idx);
+            if (!inp) return;
+            let val = parseInt(inp.value || '1', 10) + delta;
+            if (isNaN(val) || val < 1) val = 1;
+            inp.value = val;
+            updateMultiProposalSummary();
+        }}
+
+        function updateMultiProposalSummary() {{
+            const checks = document.querySelectorAll('.multi-prop-check');
+            let count = 0;
+            let totalUsd = 0.0;
+            checks.forEach((chk) => {{
+                const idx = chk.getAttribute('data-idx');
+                const price = parseFloat(chk.getAttribute('data-price') || '0');
+                const act = chk.getAttribute('data-action') || 'BUY';
+                const shInp = document.getElementById('multiPropShares_' + idx);
+                const sh = shInp ? Math.max(1, parseInt(shInp.value || '1', 10)) : 1;
+                const subEl = document.getElementById('multiPropSub_' + idx);
+                const subVal = price * sh;
+                if (subEl) subEl.textContent = '$' + subVal.toFixed(2);
+                if (chk.checked) {{
+                    count += 1;
+                    totalUsd += (act === 'SELL' ? -subVal : subVal);
+                }}
+            }});
+            const badge = document.getElementById('multiProposalTotalBadge');
+            if (badge) {{
+                const remCash = CURRENT_CASH - totalUsd;
+                badge.textContent = '選択中: ' + count + '銘柄（必要額 $' + Math.max(0, totalUsd).toFixed(2) + ' / 反映後の現金目安 $' + remCash.toFixed(2) + '）';
+                badge.className = remCash >= 0
+                    ? 'text-xs font-mono text-emerald-300 font-bold'
+                    : 'text-xs font-mono text-rose-400 font-bold';
+            }}
+        }}
+
+        async function approveSelectedMultiProposals() {{
+            const online = await checkLocalServer();
+            if (!online) {{
+                showOwnerAlert(
+                    '💡 <b>社長室サーバーが起動していません：</b><br>フォルダ内の <code>start_dashboard.command</code> をダブルクリックしてください！',
+                    true
+                );
+                return;
+            }}
+            const checks = document.querySelectorAll('.multi-prop-check');
+            const selectedTrades = [];
+            checks.forEach((chk) => {{
+                if (!chk.checked) return;
+                const idx = chk.getAttribute('data-idx');
+                const action = chk.getAttribute('data-action') || 'BUY';
+                const ticker = chk.getAttribute('data-ticker') || '';
+                const price = parseFloat(chk.getAttribute('data-price') || '0');
+                const shInp = document.getElementById('multiPropShares_' + idx);
+                const shares = shInp ? Math.max(1, parseInt(shInp.value || '1', 10)) : 1;
+                if (ticker) {{
+                    selectedTrades.push({{
+                        action: action,
+                        ticker: ticker,
+                        shares: shares,
+                        price: price,
+                        note: 'AI提案リストから一括決定（' + ticker + ' ' + shares + '株 @ $' + price.toFixed(2) + '）'
+                    }});
+                }}
+            }});
+            if (selectedTrades.length === 0) {{
+                showOwnerAlert('⚠️ 反映したい銘柄に1つ以上チェックを入れてください。', true);
+                return;
+            }}
+            startLoadingOverlay('trade', '選んだ ' + selectedTrades.length + ' 銘柄をまとめて口座へ反映中...', '複数銘柄の保有データと現金残高を一括計算しています');
+            try {{
+                const res = await fetch(API_BASE + '/api/manual_trade', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ trades: selectedTrades }})
+                }});
+                const data = await res.json();
+                if (!res.ok || data.status !== 'ok') {{
+                    throw new Error(data.message || '一括反映に失敗しました');
+                }}
+                stopLoadingOverlay(true, '✅ ' + selectedTrades.length + '銘柄の一括反映が完了しました！');
+                showOwnerAlert('✅ <b>' + data.message + '</b>', false);
+                setTimeout(() => reloadDashboardFresh(), 700);
+            }} catch (err) {{
+                stopLoadingOverlay(false);
+                showOwnerAlert('❌ エラー: ' + err.message, true);
+            }}
+        }}
+
+        // ---------------------------------------------------------------------
+        // 右側「社長の決定・報告パネル」：ワンクリック選択＆リアルタイム金額計算＆複数まとめカート
+        // ---------------------------------------------------------------------
+        function setReportActionMode(mode) {{
+            const sel = document.getElementById('reportActionSelect');
+            if (sel) sel.value = mode;
+            const modes = ['BUY', 'SELL', 'DEPOSIT'];
+            modes.forEach((m) => {{
+                const btn = document.getElementById('actBtn_' + m);
+                if (!btn) return;
+                if (m === mode) {{
+                    if (m === 'BUY') btn.className = 'py-2 px-2 rounded-xl text-xs font-extrabold border-2 border-emerald-500 bg-emerald-500/20 text-emerald-200 transition';
+                    if (m === 'SELL') btn.className = 'py-2 px-2 rounded-xl text-xs font-extrabold border-2 border-rose-500 bg-rose-500/20 text-rose-200 transition';
+                    if (m === 'DEPOSIT') btn.className = 'py-2 px-2 rounded-xl text-xs font-extrabold border-2 border-sky-500 bg-sky-500/20 text-sky-200 transition';
+                }} else {{
+                    btn.className = 'py-2 px-2 rounded-xl text-xs font-bold border border-slate-700 bg-slate-900 text-slate-400 hover:text-white transition';
+                }}
+            }});
+            toggleReportFields();
+            updateLiveTradeCalc();
+        }}
+
         function toggleReportFields() {{
             const act = document.getElementById('reportActionSelect').value;
             const tickerWrap = document.getElementById('reportTickerWrap');
             const sharesWrap = document.getElementById('reportSharesWrap');
+            const buyBox = document.getElementById('quickBuyChipsBox');
+            const sellBox = document.getElementById('quickSellChipsBox');
             const priceLabel = document.getElementById('reportPriceLabel');
             const priceInput = document.getElementById('reportPriceInput');
             if (act === 'DEPOSIT') {{
-                tickerWrap.classList.add('opacity-40', 'pointer-events-none');
-                sharesWrap.classList.add('opacity-40', 'pointer-events-none');
+                tickerWrap.classList.add('hidden');
+                sharesWrap.classList.add('hidden');
                 priceLabel.textContent = '追加入金額 (ドル)';
                 priceInput.placeholder = '例: 100.00';
+                if (!priceInput.value) priceInput.value = '100.00';
             }} else {{
-                tickerWrap.classList.remove('opacity-40', 'pointer-events-none');
-                sharesWrap.classList.remove('opacity-40', 'pointer-events-none');
-                priceLabel.textContent = '1株の価格 (空欄なら自動取得)';
-                priceInput.placeholder = '空欄で最新株価';
+                tickerWrap.classList.remove('hidden');
+                sharesWrap.classList.remove('hidden');
+                priceLabel.textContent = '1株の価格($)';
+                priceInput.placeholder = '自動取得';
+                if (act === 'SELL') {{
+                    if (buyBox) buyBox.classList.add('hidden');
+                    if (sellBox) sellBox.classList.remove('hidden');
+                }} else {{
+                    if (buyBox) buyBox.classList.remove('hidden');
+                    if (sellBox) sellBox.classList.add('hidden');
+                }}
+            }}
+        }}
+
+        function selectQuickTicker(ticker, price, defaultShares = 1) {{
+            const tInp = document.getElementById('reportTickerInput');
+            const pInp = document.getElementById('reportPriceInput');
+            const sInp = document.getElementById('reportSharesInput');
+            const uSel = document.getElementById('quickUniverseSelect');
+            if (tInp) tInp.value = ticker;
+            if (pInp && price > 0) pInp.value = price.toFixed(2);
+            if (sInp && defaultShares >= 1) sInp.value = defaultShares;
+            if (uSel) uSel.value = ticker;
+            updateLiveTradeCalc();
+        }}
+
+        function onSelectUniverseDropdown(ticker) {{
+            if (!ticker) return;
+            const prc = KNOWN_PRICES[ticker] || 0.0;
+            selectQuickTicker(ticker, prc, 1);
+        }}
+
+        function stepReportShares(delta) {{
+            const sInp = document.getElementById('reportSharesInput');
+            if (!sInp) return;
+            let val = parseInt(sInp.value || '1', 10) + delta;
+            if (isNaN(val) || val < 1) val = 1;
+            sInp.value = val;
+            updateLiveTradeCalc();
+        }}
+
+        function setMaxReportShares() {{
+            const act = document.getElementById('reportActionSelect').value;
+            const ticker = (document.getElementById('reportTickerInput').value || '').trim().toUpperCase();
+            const sInp = document.getElementById('reportSharesInput');
+            const pInp = document.getElementById('reportPriceInput');
+            if (!sInp) return;
+            if (act === 'SELL') {{
+                const held = HELD_SHARES[ticker] || 1;
+                sInp.value = Math.max(1, held);
+            }} else {{
+                const prc = parseFloat(pInp.value || '0') || KNOWN_PRICES[ticker] || 0;
+                if (prc > 0) {{
+                    const maxBuy = Math.max(1, Math.floor(CURRENT_CASH / prc));
+                    sInp.value = maxBuy;
+                }}
+            }}
+            updateLiveTradeCalc();
+        }}
+
+        function updateLiveTradeCalc() {{
+            const act = document.getElementById('reportActionSelect').value;
+            const ticker = (document.getElementById('reportTickerInput').value || '').trim().toUpperCase();
+            const shares = Math.max(1, parseInt(document.getElementById('reportSharesInput').value || '1', 10));
+            const priceRaw = document.getElementById('reportPriceInput').value.trim();
+            let price = priceRaw ? parseFloat(priceRaw) : (KNOWN_PRICES[ticker] || 0.0);
+            const preview = document.getElementById('liveTradeCostPreview');
+            if (!preview) return;
+
+            if (act === 'DEPOSIT') {{
+                const dep = price > 0 ? price : 100.0;
+                preview.innerHTML = '💵 追加入金: <b class="text-sky-300">+$' + dep.toFixed(2) + '</b>（入金後の現金: <b class="text-white">$' + (CURRENT_CASH + dep).toFixed(2) + '</b>）';
+                return;
+            }}
+            if (!ticker) {{
+                preview.innerHTML = '💡 上の銘柄ボタンを押すか一覧から選ぶと、ここに合計金額が自動計算されます';
+                return;
+            }}
+            const jaName = TICKER_JA_MAP[ticker] ? ticker + '（' + TICKER_JA_MAP[ticker] + '）' : ticker;
+            if (price <= 0) {{
+                preview.innerHTML = '📌 選択中: <b class="text-white">' + jaName + ' × ' + shares + '株</b>（決定時に最新株価を自動取得します）';
+                return;
+            }}
+            const total = price * shares;
+            const jpy = Math.round(total * 150).toLocaleString();
+            if (act === 'BUY') {{
+                const rem = CURRENT_CASH - total;
+                const remCls = rem >= 0 ? 'text-emerald-300' : 'text-rose-400';
+                const maxAffordable = Math.floor(CURRENT_CASH / price);
+                preview.innerHTML = '🟢 買付: <b class="text-white">' + jaName + ' × ' + shares + '株</b> ＝ 合計 <b class="text-emerald-400">$' + total.toFixed(2) + '</b> (約¥' + jpy + ') ｜ 残り現金: <b class="' + remCls + '">$' + rem.toFixed(2) + '</b> <span class="text-slate-400">(最大' + maxAffordable + '株買えます)</span>';
+            }} else {{
+                const held = HELD_SHARES[ticker] || 0;
+                const remCash = CURRENT_CASH + total;
+                preview.innerHTML = '🔴 売却: <b class="text-white">' + jaName + ' × ' + shares + '株</b> ＝ 受取 <b class="text-amber-300">+$' + total.toFixed(2) + '</b> (約¥' + jpy + ') ｜ 売却後の現金: <b class="text-sky-300">$' + remCash.toFixed(2) + '</b> <span class="text-slate-400">(現在保有:' + held + '株)</span>';
+            }}
+        }}
+
+        function addCurrentToTradeCart() {{
+            const action = document.getElementById('reportActionSelect').value;
+            const ticker = document.getElementById('reportTickerInput').value.trim().toUpperCase();
+            const shares = Math.max(1, parseInt(document.getElementById('reportSharesInput').value || '1', 10));
+            const priceRaw = document.getElementById('reportPriceInput').value.trim();
+            const price = priceRaw ? parseFloat(priceRaw) : (KNOWN_PRICES[ticker] || 0.0);
+            const note = document.getElementById('reportNoteInput').value.trim();
+
+            if (action !== 'DEPOSIT' && !ticker) {{
+                showOwnerAlert('⚠️ まず上のボタンまたは一覧から銘柄を選んでください。', true);
+                return;
+            }}
+            tradeCart.push({{
+                action: action,
+                ticker: action === 'DEPOSIT' ? 'CASH' : ticker,
+                shares: action === 'DEPOSIT' ? 1 : shares,
+                price: price,
+                note: note
+            }});
+            document.getElementById('reportTickerInput').value = '';
+            document.getElementById('reportSharesInput').value = '1';
+            document.getElementById('quickUniverseSelect').value = '';
+            renderTradeCart();
+            updateLiveTradeCalc();
+        }}
+
+        function removeTradeCartItem(idx) {{
+            tradeCart.splice(idx, 1);
+            renderTradeCart();
+        }}
+
+        function clearTradeCart() {{
+            tradeCart = [];
+            renderTradeCart();
+        }}
+
+        function renderTradeCart() {{
+            const box = document.getElementById('tradeCartBox');
+            const listEl = document.getElementById('tradeCartItems');
+            const btnText = document.getElementById('submitReportBtnText');
+            if (!box || !listEl) return;
+            if (tradeCart.length === 0) {{
+                box.classList.add('hidden');
+                if (btnText) btnText.textContent = '✅ 決定！この内容を口座データに反映する';
+                return;
+            }}
+            box.classList.remove('hidden');
+            listEl.innerHTML = tradeCart.map((item, i) => {{
+                const actBadge = item.action === 'BUY'
+                    ? '<span class="text-emerald-300 font-bold">🟢買付</span>'
+                    : (item.action === 'SELL' ? '<span class="text-rose-300 font-bold">🔴売却</span>' : '<span class="text-sky-300 font-bold">💵入金</span>');
+                const sub = (item.price * item.shares).toFixed(2);
+                return '<div class="flex items-center justify-between bg-slate-950/80 px-2.5 py-1.5 rounded-lg border border-slate-800">'
+                    + '<div>' + actBadge + ' <b class="text-white font-mono ml-1">' + item.ticker + '</b> × ' + item.shares + '株 <span class="text-slate-400 font-mono">($' + sub + ')</span></div>'
+                    + '<button type="button" onclick="removeTradeCartItem(' + i + ')" class="text-slate-400 hover:text-rose-400 font-bold px-1">✕</button>'
+                    + '</div>';
+            }}).join('');
+            if (btnText) {{
+                btnText.textContent = '✅ まとめリストの ' + tradeCart.length + ' 件（＋入力中の内容）を一括反映する';
             }}
         }}
 
@@ -1671,37 +2213,45 @@ def generate_dashboard(
 
             const action = document.getElementById('reportActionSelect').value;
             const ticker = document.getElementById('reportTickerInput').value.trim().toUpperCase();
-            const shares = parseInt(document.getElementById('reportSharesInput').value || '1', 10);
+            const shares = Math.max(1, parseInt(document.getElementById('reportSharesInput').value || '1', 10));
             const priceRaw = document.getElementById('reportPriceInput').value.trim();
             const price = priceRaw ? parseFloat(priceRaw) : 0.0;
             const note = document.getElementById('reportNoteInput').value.trim();
 
-            if (action !== 'DEPOSIT' && !ticker) {{
-                showOwnerAlert('⚠️ 銘柄ティッカー（例: NVDA, SCHD, SPYM）を入力または選択してください。', true);
+            const itemsToSubmit = [...tradeCart];
+            if (action === 'DEPOSIT' && (itemsToSubmit.length === 0 || price > 0)) {{
+                itemsToSubmit.push({{ action: 'DEPOSIT', ticker: 'CASH', shares: 1, price: price > 0 ? price : 100.0, note: note }});
+            }} else if (ticker) {{
+                itemsToSubmit.push({{ action: action, ticker: ticker, shares: shares, price: price, note: note }});
+            }}
+
+            if (itemsToSubmit.length === 0) {{
+                showOwnerAlert('⚠️ 銘柄ボタンを押すか、一覧から銘柄を選択してください。', true);
                 return;
             }}
 
             const btn = document.getElementById('submitReportBtn');
             btn.disabled = true;
             btn.innerHTML = '<span>⏳ 口座データへ反映中...</span>';
-            startLoadingOverlay('trade', '売買・入金報告を口座データへ反映中...', '最新株価の照合とポートフォリオの再計算を行っています');
+            startLoadingOverlay(
+                'trade',
+                itemsToSubmit.length > 1
+                    ? itemsToSubmit.length + '件の売買・入金をまとめて口座へ反映中...'
+                    : '売買・入金報告を口座データへ反映中...',
+                '最新株価の照合とポートフォリオの再計算を行っています'
+            );
 
             try {{
                 const res = await fetch(API_BASE + '/api/manual_trade', {{
                     method: 'POST',
                     headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{
-                        action: action,
-                        ticker: ticker,
-                        shares: shares,
-                        price: price,
-                        note: note
-                    }})
+                    body: JSON.stringify({{ trades: itemsToSubmit }})
                 }});
                 const data = await res.json();
                 if (!res.ok || data.status !== 'ok') {{
                     throw new Error(data.message || '報告の反映に失敗しました');
                 }}
+                tradeCart = [];
                 stopLoadingOverlay(true, '✅ 口座データの更新が完了しました！');
                 showOwnerAlert('✅ <b>' + data.message + '</b> 画面を最新状態に更新します...', false);
                 setTimeout(() => reloadDashboardFresh(), 700);
@@ -1709,7 +2259,8 @@ def generate_dashboard(
                 stopLoadingOverlay(false);
                 showOwnerAlert('❌ エラー: ' + err.message, true);
                 btn.disabled = false;
-                btn.innerHTML = '<span>✅ 決定！この内容を口座データに反映する</span>';
+                btn.innerHTML = '<span id="submitReportBtnText">✅ 決定！この内容を口座データに反映する</span>';
+                renderTradeCart();
             }}
         }}
 

@@ -14,19 +14,27 @@ from typing import Any
 
 from google import genai
 from google.genai import types
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
 
+class SubOrderProposal(BaseModel):
+    action: str = "BUY"      # "BUY" or "SELL"
+    ticker: str = "NONE"     # ティッカー（例: "SCHD", "KO"）
+    shares: int = 1          # 株数（1株以上の整数）
+    reason_short: str = ""   # 1行の簡単な提案理由
+
+
 class MeetingDecision(BaseModel):
     action: str          # "BUY", "SELL", or "HOLD"
-    ticker: str          # 対象ティッカー（HOLDの場合は "NONE"）
-    shares: int          # 売買株数（1株単位の整数、HOLDは 0）
+    ticker: str          # 第1提案の対象ティッカー（HOLDの場合は "NONE"）
+    shares: int          # 第1提案の売買株数（1株単位の整数、HOLDは 0）
     researcher_comment: str
     analyst_comment: str
     manager_reason: str
     sbi_order_guide: str # SBI証券での具体的な手動注文ガイド
+    additional_proposals: list[SubOrderProposal] = Field(default_factory=list)
 
 
 def build_meeting_prompt(
@@ -126,12 +134,13 @@ def build_meeting_prompt(
 {json.dumps(candidates_summary, ensure_ascii=False, indent=2)}
 
 【出力項目（すべて自然な日本語で具体的に記述すること）】
-- action: "BUY", "SELL", "HOLD" のいずれか
-- ticker: 対象ティッカーシンボル（HOLDの場合は "NONE"）
-- shares: 売買株数（1株単位の整数、HOLDの場合は 0）
+- action: 第1提案の "BUY", "SELL", "HOLD" のいずれか
+- ticker: 第1提案の対象ティッカーシンボル（HOLDの場合は "NONE"）
+- shares: 第1提案の売買株数（1株単位の整数、予算や35%上限の範囲内で2株・3株など複数株の提案も可。HOLDの場合は 0）
+- additional_proposals: 社長が複数銘柄をまとめて売買したり比較検討できるよう、第2・第3のおすすめ売買プラン（SubOrderProposalのリスト：action, ticker, shares, reason_short）を1〜3件程度含めること（例：低価格株やETFの複数株買い、別セクターの分散候補など）
 - researcher_comment: 情報収集担当（News Researcher）として、対象銘柄および市場の直近ニュースから好材料・悪材料を分析したコメント
 - analyst_comment: テクニカル分析担当（Technical Analyst）として、14日RSI・5日/25日移動平均線乖離率・出来高変化率・セクター分散の観点から数値根拠付きで評価したコメント
-- manager_reason: ファンドマネージャー（Fund Manager）として、2名の報告と現金残高・35%ルールを踏まえて最終決断を下した理由
+- manager_reason: ファンドマネージャー（Fund Manager）として、2名の報告と現金残高・35%ルールを踏まえて最終決断（および複数候補プラン）を下した理由
 - sbi_order_guide: ユーザーがSBI証券（米国株アプリ/Web）で手動注文する際の具体的な操作手順メモ（ティッカー、売買区分、株数、指値/成行の目安金額、預り区分：特定/NISAなど）
 """
     return prompt

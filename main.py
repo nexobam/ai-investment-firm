@@ -147,6 +147,8 @@ def run_daily_workflow(
         market_date=market_date,
         proposal_only=proposal_only,
     )
+    execution_result["candidates"] = candidates
+    execution_result["all_prices"] = all_prices
 
     # 7. データ永続化（portfolio.json, trade_history.csv, reports/YYYY-MM-DD.md, docs/index.html）
     save_portfolio(portfolio, portfolio_path)

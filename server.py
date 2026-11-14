@@ -119,7 +119,16 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             instruction = str(data.get("instruction", "")).strip()
             analysis_only = bool(data.get("analysis_only", False))
             try:
-                result = run_daily_workflow(
+                import importlib
+                import agents as _ag
+                import dashboard_generator as _dg
+                import main as _mn
+                import portfolio_manager as _pm
+                importlib.reload(_ag)
+                importlib.reload(_pm)
+                importlib.reload(_dg)
+                importlib.reload(_mn)
+                result = _mn.run_daily_workflow(
                     base_dir=BASE_DIR,
                     force=True,
                     owner_instruction=instruction,
@@ -145,13 +154,21 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                 )
             return
 
-        # 2. オーナーによる実売買・入金報告 API
+        # 2. オーナーによる実売買・入金報告 API（単一注文および複数銘柄の一括注文に対応）
         if self.path == "/api/manual_trade":
-            action = str(data.get("action", "BUY")).upper().strip()
-            ticker = str(data.get("ticker", "")).upper().strip()
-            shares = int(data.get("shares", 1) or 1)
-            price = float(data.get("price", 0.0) or 0.0)
-            note = str(data.get("note", "")).strip()
+            raw_trades = data.get("trades")
+            if isinstance(raw_trades, list) and len(raw_trades) > 0:
+                trade_items = raw_trades
+            else:
+                trade_items = [
+                    {
+                        "action": data.get("action", "BUY"),
+                        "ticker": data.get("ticker", ""),
+                        "shares": data.get("shares", 1),
+                        "price": data.get("price", 0.0),
+                        "note": data.get("note", ""),
+                    }
+                ]
 
             portfolio_path = BASE_DIR / "data" / "portfolio.json"
             csv_path = BASE_DIR / "data" / "trade_history.csv"
@@ -160,28 +177,51 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
 
             try:
                 portfolio = load_or_init_portfolio(portfolio_path)
-                if action in ("BUY", "SELL") and price <= 0.0:
-                    price = _fetch_latest_price_for_ticker(ticker, portfolio)
-                    if price <= 0.0:
-                        raise ValueError(
-                            f"{ticker} の現在株価を自動取得できませんでした。約定単価（USD）を直接入力してください。"
-                        )
+                notes_summary: list[str] = []
+                last_decision = None
+                last_exec_res = None
 
-                portfolio, decision, exec_res = record_owner_trade_report(
-                    portfolio=portfolio,
-                    action=action,
-                    ticker=ticker,
-                    shares=shares,
-                    price=price,
-                    sector_map=UNIVERSE_STOCKS,
-                    note=note,
-                )
+                for item in trade_items:
+                    action = str(item.get("action", "BUY")).upper().strip()
+                    ticker = str(item.get("ticker", "")).upper().strip()
+                    shares = int(item.get("shares", 1) or 1)
+                    price = float(item.get("price", 0.0) or 0.0)
+                    note = str(item.get("note", data.get("note", ""))).strip()
+
+                    if action in ("BUY", "SELL") and price <= 0.0:
+                        price = _fetch_latest_price_for_ticker(ticker, portfolio)
+                        if price <= 0.0:
+                            raise ValueError(
+                                f"{ticker} の現在株価を自動取得できませんでした。約定単価（USD）を直接入力してください。"
+                            )
+
+                    portfolio, decision, exec_res = record_owner_trade_report(
+                        portfolio=portfolio,
+                        action=action,
+                        ticker=ticker,
+                        shares=shares,
+                        price=price,
+                        sector_map=UNIVERSE_STOCKS,
+                        note=note,
+                    )
+                    append_trade_history(exec_res, csv_path)
+                    notes_summary.append(str(exec_res.get("note", "")))
+                    last_decision = decision
+                    last_exec_res = exec_res
+
+                if len(notes_summary) > 1 and last_exec_res is not None and last_decision is not None:
+                    combined_note = f"【複数一括反映（{len(notes_summary)}件）】" + " / ".join(notes_summary)
+                    last_exec_res["note"] = combined_note
+                    last_decision.manager_reason = (
+                        f"社長（オーナー）により {len(notes_summary)} 件の売買・入金報告が一括反映されました。\n"
+                        + "\n".join(f"・{n}" for n in notes_summary)
+                    )
+
                 save_portfolio(portfolio, portfolio_path)
-                append_trade_history(exec_res, csv_path)
                 generate_daily_report(
                     portfolio=portfolio,
-                    decision=decision,
-                    execution_result=exec_res,
+                    decision=last_decision,
+                    execution_result=last_exec_res,
                     candidates=[],
                     reports_dir=reports_dir,
                 )
@@ -191,8 +231,8 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                 importlib.reload(_dg)
                 _dg.generate_dashboard(
                     portfolio=portfolio,
-                    decision=decision,
-                    execution_result=exec_res,
+                    decision=last_decision,
+                    execution_result=last_exec_res,
                     trade_history=recent_trades,
                     output_path=dashboard_path,
                 )
@@ -200,7 +240,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                     HTTPStatus.OK,
                     {
                         "status": "ok",
-                        "message": exec_res["note"],
+                        "message": last_exec_res["note"] if last_exec_res else "反映完了",
                     },
                 )
             except Exception as exc:
