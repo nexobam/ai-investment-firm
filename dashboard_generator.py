@@ -110,6 +110,253 @@ def to_ticker_display(ticker: str) -> str:
     return t
 
 
+def _get_rpg_avatar_svg(role: str) -> str:
+    """
+    ドラクエ・レトロRPG風の可愛いドット絵（16x16ピクセルアート）人形アイコンSVGを返す。
+    """
+    if role == "researcher":
+        # ① ニュース調査担当：羽根つき帽子＆巻物を持った可愛い吟遊詩人・情報屋キャラ
+        return """
+        <svg viewBox="0 0 16 16" class="w-12 h-12 rpg-pixel-doll" shape-rendering="crispEdges">
+            <!-- 白い羽根飾り -->
+            <rect x="10" y="0" width="2" height="1" fill="#ffffff"/>
+            <rect x="11" y="1" width="2" height="1" fill="#e2e8f0"/>
+            <!-- 青い冒険者ベレー帽 -->
+            <rect x="4" y="1" width="6" height="1" fill="#0284c7"/>
+            <rect x="3" y="2" width="9" height="2" fill="#38bdf8"/>
+            <rect x="3" y="4" width="10" height="1" fill="#0369a1"/>
+            <rect x="7" y="3" width="2" height="1" fill="#fbbf24"/>
+            <!-- 髪と可愛い顔 -->
+            <rect x="3" y="5" width="2" height="3" fill="#92400e"/>
+            <rect x="11" y="5" width="2" height="3" fill="#92400e"/>
+            <rect x="5" y="5" width="6" height="4" fill="#fde68a"/>
+            <!-- キラキラの目とピンクのほっぺ -->
+            <rect x="6" y="6" width="1" height="2" fill="#0f172a"/>
+            <rect x="9" y="6" width="1" height="2" fill="#0f172a"/>
+            <rect x="6" y="6" width="1" height="1" fill="#ffffff"/>
+            <rect x="9" y="6" width="1" height="1" fill="#ffffff"/>
+            <rect x="5" y="7" width="1" height="1" fill="#fb7185"/>
+            <rect x="10" y="7" width="1" height="1" fill="#fb7185"/>
+            <rect x="7" y="8" width="2" height="1" fill="#f43f5e"/>
+            <!-- 水色の旅人マントと服 -->
+            <rect x="4" y="9" width="8" height="4" fill="#0ea5e9"/>
+            <rect x="6" y="9" width="4" height="1" fill="#fef08a"/>
+            <rect x="5" y="10" width="6" height="2" fill="#0284c7"/>
+            <!-- 手に持ったニュースの巻物 -->
+            <rect x="11" y="9" width="3" height="3" fill="#fef3c7"/>
+            <rect x="11" y="10" width="3" height="1" fill="#d97706"/>
+            <!-- ブーツ -->
+            <rect x="5" y="13" width="2" height="2" fill="#78350f"/>
+            <rect x="9" y="13" width="2" height="2" fill="#78350f"/>
+        </svg>
+        """
+    if role == "analyst":
+        # ② チャート・数値分析担当：とんがり帽子＆光る水晶玉を持った可愛い魔法使い・賢者キャラ
+        return """
+        <svg viewBox="0 0 16 16" class="w-12 h-12 rpg-pixel-doll" shape-rendering="crispEdges">
+            <!-- とんがり魔法使い帽子 -->
+            <rect x="7" y="0" width="2" height="1" fill="#7e22ce"/>
+            <rect x="6" y="1" width="4" height="1" fill="#9333ea"/>
+            <rect x="5" y="2" width="6" height="2" fill="#a855f7"/>
+            <rect x="4" y="3" width="8" height="1" fill="#fbbf24"/>
+            <rect x="2" y="4" width="12" height="1" fill="#6b21a8"/>
+            <!-- 銀髪と可愛い顔 -->
+            <rect x="3" y="5" width="2" height="4" fill="#e2e8f0"/>
+            <rect x="11" y="5" width="2" height="4" fill="#e2e8f0"/>
+            <rect x="5" y="5" width="6" height="4" fill="#fde68a"/>
+            <!-- 知的なメガネ＆目・ほっぺ -->
+            <rect x="5" y="6" width="2" height="2" fill="#38bdf8"/>
+            <rect x="9" y="6" width="2" height="2" fill="#38bdf8"/>
+            <rect x="6" y="6" width="1" height="2" fill="#0f172a"/>
+            <rect x="9" y="6" width="1" height="2" fill="#0f172a"/>
+            <rect x="7" y="6" width="2" height="1" fill="#cbd5e1"/>
+            <rect x="5" y="8" width="1" height="1" fill="#fb7185"/>
+            <rect x="10" y="8" width="1" height="1" fill="#fb7185"/>
+            <!-- 紫の賢者ローブ -->
+            <rect x="4" y="9" width="8" height="4" fill="#9333ea"/>
+            <rect x="7" y="9" width="2" height="4" fill="#fbbf24"/>
+            <!-- 光るチャート水晶玉 -->
+            <rect x="11" y="9" width="3" height="3" fill="#22d3ee"/>
+            <rect x="12" y="9" width="1" height="1" fill="#ffffff"/>
+            <!-- 靴 -->
+            <rect x="5" y="13" width="2" height="2" fill="#581c87"/>
+            <rect x="9" y="13" width="2" height="2" fill="#581c87"/>
+        </svg>
+        """
+    if role == "manager":
+        # ③ ファンドマネージャー：金の王冠＆赤いマント＆黄金の剣を持った可愛い勇者・王様キャラ
+        return """
+        <svg viewBox="0 0 16 16" class="w-12 h-12 rpg-pixel-doll" shape-rendering="crispEdges">
+            <!-- 黄金の王冠とルビー -->
+            <rect x="4" y="1" width="1" height="1" fill="#fbbf24"/>
+            <rect x="7" y="0" width="2" height="2" fill="#fbbf24"/>
+            <rect x="11" y="1" width="1" height="1" fill="#fbbf24"/>
+            <rect x="4" y="2" width="8" height="2" fill="#f59e0b"/>
+            <rect x="7" y="2" width="2" height="1" fill="#f43f5e"/>
+            <!-- 勇者の髪と可愛い顔 -->
+            <rect x="3" y="4" width="10" height="1" fill="#b45309"/>
+            <rect x="3" y="5" width="2" height="3" fill="#b45309"/>
+            <rect x="11" y="5" width="2" height="3" fill="#b45309"/>
+            <rect x="5" y="5" width="6" height="4" fill="#fde68a"/>
+            <!-- キリッとした目とピンクのほっぺ -->
+            <rect x="6" y="6" width="1" height="2" fill="#0f172a"/>
+            <rect x="9" y="6" width="1" height="2" fill="#0f172a"/>
+            <rect x="6" y="6" width="1" height="1" fill="#ffffff"/>
+            <rect x="9" y="6" width="1" height="1" fill="#ffffff"/>
+            <rect x="5" y="7" width="1" height="1" fill="#fb7185"/>
+            <rect x="10" y="7" width="1" height="1" fill="#fb7185"/>
+            <rect x="7" y="8" width="2" height="1" fill="#ef4444"/>
+            <!-- 王様の赤いマントと黄金アーマー -->
+            <rect x="3" y="9" width="10" height="4" fill="#e11d48"/>
+            <rect x="5" y="9" width="6" height="4" fill="#fbbf24"/>
+            <rect x="6" y="10" width="4" height="2" fill="#2563eb"/>
+            <!-- 黄金の指揮剣 -->
+            <rect x="13" y="6" width="1" height="4" fill="#fef08a"/>
+            <rect x="12" y="9" width="3" height="1" fill="#f59e0b"/>
+            <!-- ブーツ -->
+            <rect x="5" y="13" width="2" height="2" fill="#92400e"/>
+            <rect x="9" y="13" width="2" height="2" fill="#92400e"/>
+        </svg>
+        """
+    # ④ 資金・ルール管理担当：エメラルドの兜＆大きな盾を持った可愛い重装ナイト・パラディンキャラ
+    return """
+    <svg viewBox="0 0 16 16" class="w-12 h-12 rpg-pixel-doll" shape-rendering="crispEdges">
+        <!-- ナイトの羽根飾り＆エメラルド兜 -->
+        <rect x="7" y="0" width="2" height="2" fill="#10b981"/>
+        <rect x="4" y="2" width="8" height="2" fill="#cbd5e1"/>
+        <rect x="3" y="4" width="10" height="1" fill="#94a3b8"/>
+        <rect x="7" y="3" width="2" height="1" fill="#10b981"/>
+        <!-- 兜から覗く可愛い顔 -->
+        <rect x="3" y="5" width="2" height="4" fill="#64748b"/>
+        <rect x="11" y="5" width="2" height="4" fill="#64748b"/>
+        <rect x="5" y="5" width="6" height="4" fill="#fde68a"/>
+        <rect x="6" y="6" width="1" height="2" fill="#0f172a"/>
+        <rect x="9" y="6" width="1" height="2" fill="#0f172a"/>
+        <rect x="6" y="6" width="1" height="1" fill="#ffffff"/>
+        <rect x="9" y="6" width="1" height="1" fill="#ffffff"/>
+        <rect x="5" y="7" width="1" height="1" fill="#fb7185"/>
+        <rect x="10" y="7" width="1" height="1" fill="#fb7185"/>
+        <!-- エメラルド＆シルバーの鎧 -->
+        <rect x="4" y="9" width="8" height="4" fill="#10b981"/>
+        <rect x="5" y="9" width="6" height="3" fill="#e2e8f0"/>
+        <rect x="7" y="10" width="2" height="2" fill="#059669"/>
+        <!-- 鉄壁のガード盾 -->
+        <rect x="1" y="8" width="4" height="5" fill="#fbbf24"/>
+        <rect x="2" y="9" width="2" height="3" fill="#059669"/>
+        <!-- 鎧ブーツ -->
+        <rect x="5" y="13" width="2" height="2" fill="#475569"/>
+        <rect x="9" y="13" width="2" height="2" fill="#475569"/>
+    </svg>
+    """
+
+
+def _analyze_agent_condition(
+    role: str,
+    comment_raw: str,
+    display_action: str,
+    ticker_ja: str,
+) -> dict[str, Any]:
+    """
+    長い文章を読まなくても「好調（チャンス）」「普通（様子見）」「不調（警戒）」が
+    アイコンと1行要約で直感的にわかるよう、各社員のコンディション情報を生成する。
+    """
+    text = (comment_raw or "").strip()
+    is_mock = "[Mock]" in text or "APIキー未設定" in text
+
+    # 判定ロジック
+    if is_mock:
+        state = "normal"
+    elif role == "researcher":
+        if any(w in text for w in ["好調", "期待", "強力", "過剰反応", "追い風", "成長", "堅調", "ポジティブ", "買い"]) or display_action == "BUY":
+            state = "good"
+        elif any(w in text for w in ["悪化", "暴落", "懸念", "危険", "売り圧力", "下落リスク", "警戒", "ネガティブ"]) and display_action != "BUY":
+            state = "bad"
+        else:
+            state = "normal"
+    elif role == "analyst":
+        if any(w in text for w in ["最適", "売られすぎ", "押し目", "反発", "割安", "買い場", "上昇", "好機"]) or display_action == "BUY":
+            state = "good"
+        elif any(w in text for w in ["買われすぎ", "過熱", "下落トレンド", "危険", "割高", "警戒", "崩れ"]) or display_action == "SELL":
+            state = "bad"
+        else:
+            state = "normal"
+    elif role == "manager":
+        if display_action == "BUY":
+            state = "good"
+        elif display_action == "SELL":
+            state = "bad"
+        else:
+            state = "normal"
+    else:
+        # accountant (経理・リスク管理)
+        if any(w in text for w in ["違反", "不足", "却下", "フォールバック", "超過", "エラー", "不可"]):
+            state = "bad"
+        elif any(w in text for w in ["クリア", "検証OK", "買付", "成功", "承認"]) or display_action == "BUY":
+            state = "good"
+        else:
+            state = "normal"
+
+    # 状態ごとの見た目＆1行超要約テキスト
+    if state == "good":
+        summaries = {
+            "researcher": f"「ニュース面は好調！{ticker_ja}の将来性に期待できる明るい状況です✨」",
+            "analyst": "「チャートにお買い得サイン点灯！今から反発が狙える絶好調な買い場です📈」",
+            "manager": f"「今は攻めるチャンス！自信を持って『{ticker_ja}』の購入を提案します👑」",
+            "accountant": "「予算も安全ルールも100点クリア！安心して決定ボタンを押せます🛡️」",
+        }
+        return {
+            "state": "good",
+            "label": "🌞 好調（買いチャンス！）" if role != "accountant" else "🌞 好調（ルール合格！）",
+            "short_label": "🌞 好調！",
+            "face_icon": "😆✨",
+            "gauge_pct": 92,
+            "badge_cls": "bg-emerald-500/25 text-emerald-200 border-emerald-400/60 shadow-[0_0_12px_rgba(16,185,129,0.3)]",
+            "card_cls": "border-emerald-500/50 bg-gradient-to-br from-slate-950 via-slate-950 to-emerald-950/30",
+            "bar_cls": "bg-gradient-to-r from-emerald-500 to-teal-300",
+            "summary_box_cls": "bg-emerald-950/50 border-emerald-500/40 text-emerald-200",
+            "summary_ja": summaries.get(role, "「状況は好調です！」"),
+        }
+
+    if state == "bad":
+        summaries = {
+            "researcher": "「ちょっと嫌なニュースが多めの不調ムード…今は無理せず警戒が必要です💦」",
+            "analyst": "「株価チャートが危険水域（過熱または下落中）…今は手出し注意です⚠️」",
+            "manager": "「リスクが高い不調相場のため、売却または厳重な守りを提案します🚨」",
+            "accountant": "「予算オーバーまたは35%集中投資ルール違反のため、安全装置でストップしました🛑」",
+        }
+        return {
+            "state": "bad",
+            "label": "🌧️ 不調（警戒・ストップ）",
+            "short_label": "🌧️ 不調…",
+            "face_icon": "💦⚠️",
+            "gauge_pct": 25,
+            "badge_cls": "bg-rose-500/25 text-rose-200 border-rose-400/60 shadow-[0_0_12px_rgba(244,63,94,0.3)]",
+            "card_cls": "border-rose-500/50 bg-gradient-to-br from-slate-950 via-slate-950 to-rose-950/30",
+            "bar_cls": "bg-gradient-to-r from-rose-600 to-orange-400",
+            "summary_box_cls": "bg-rose-950/50 border-rose-500/40 text-rose-200",
+            "summary_ja": summaries.get(role, "「今は警戒モードです」"),
+        }
+
+    summaries = {
+        "researcher": "「良いニュースと悪いニュースが半々の『普通』の状況。焦らず見守り中です🍵」",
+        "analyst": "「株価は高すぎず安すぎずの普通水準。無理に買わず次のチャンス待ちです📊」",
+        "manager": "「今は無理に動かず、現金を温存して様子を見る（キープ）のが一番安全です✋」",
+        "accountant": "「現金は100%安全にキープ中！無駄遣いせずガッチリお財布を守っています💰」",
+    }
+    return {
+        "state": "normal",
+        "label": "⛅ 普通（様子見モード）",
+        "short_label": "⛅ 普通",
+        "face_icon": "🙂🍵",
+        "gauge_pct": 58,
+        "badge_cls": "bg-amber-500/20 text-amber-200 border-amber-400/50",
+        "card_cls": "border-slate-700 bg-slate-950",
+        "bar_cls": "bg-gradient-to-r from-amber-400 to-sky-400",
+        "summary_box_cls": "bg-slate-900/90 border-slate-700 text-amber-200",
+        "summary_ja": summaries.get(role, "「現在は様子見モードです」"),
+    }
+
+
 def generate_dashboard(
     portfolio: dict[str, Any],
     decision: MeetingDecision,
@@ -141,11 +388,14 @@ def generate_dashboard(
 
     # AI提案アクションと実際の執行状態を確認
     # 提案モード（社長の決定待ち）の場合は requested_action または decision.action を強調表示する
-    is_proposal_pending = bool(execution_result.get("is_proposal_only", False))
+    is_proposal_pending = bool(
+        execution_result.get("is_proposal_only", False)
+        or execution_result.get("proposal_only", False)
+    )
     display_action = (
         str(decision.action or "HOLD").upper()
         if is_proposal_pending
-        else str(execution_result.get("action", "HOLD")).upper()
+        else str(execution_result.get("action", execution_result.get("executed_action", "HOLD"))).upper()
     )
     raw_ticker = (
         str(decision.ticker or "NONE").upper()
@@ -180,7 +430,9 @@ def generate_dashboard(
         card_border = "border-slate-600/60"
         action_label = "HOLD（現金温存・見送り）"
 
-    exec_note_str = html.escape(str(execution_result.get("note", "")))
+    exec_note_str = html.escape(
+        str(execution_result.get("note") or execution_result.get("execution_note") or "")
+    )
     sbi_guide_str = html.escape(decision.sbi_order_guide or "本日の注文はありません。")
 
     # 社長決裁ボタン（AIがBUYまたはSELLを提案している場合にワンクリックで承認・反映できるボタン）
@@ -200,11 +452,26 @@ def generate_dashboard(
         </div>
         """
 
-    # 4体のAI社員コメント
+    # 4体のAI社員コメント＆ドラクエ風ドット絵アイコン＆好調・普通・不調ステータス判定
+    raw_accountant_comment = str(
+        execution_result.get("accountant_comment")
+        or execution_result.get("executor_comment")
+        or ""
+    )
     researcher_text = html.escape(decision.researcher_comment)
     analyst_text = html.escape(decision.analyst_comment)
     manager_text = html.escape(decision.manager_reason)
-    accountant_text = html.escape(str(execution_result.get("accountant_comment", "")))
+    accountant_text = html.escape(raw_accountant_comment)
+
+    svg_researcher = _get_rpg_avatar_svg("researcher")
+    svg_analyst = _get_rpg_avatar_svg("analyst")
+    svg_manager = _get_rpg_avatar_svg("manager")
+    svg_accountant = _get_rpg_avatar_svg("accountant")
+
+    cond_researcher = _analyze_agent_condition("researcher", decision.researcher_comment, display_action, ticker_display_str)
+    cond_analyst = _analyze_agent_condition("analyst", decision.analyst_comment, display_action, ticker_display_str)
+    cond_manager = _analyze_agent_condition("manager", decision.manager_reason, display_action, ticker_display_str)
+    cond_accountant = _analyze_agent_condition("accountant", raw_accountant_comment, display_action, ticker_display_str)
 
     # 保有銘柄テーブルと日本語セクター集計
     holdings: dict[str, dict[str, Any]] = portfolio.get("holdings", {})
@@ -337,6 +604,19 @@ def generate_dashboard(
             background: linear-gradient(90deg, #10b981 0%, #38bdf8 50%, #6366f1 100%);
             background-size: 200% 100%;
             animation: shimmerMove 2.2s linear infinite;
+        }}
+        @keyframes rpgBob {{
+            0%, 100% {{ transform: translateY(0px); }}
+            50% {{ transform: translateY(-4px); }}
+        }}
+        .rpg-pixel-doll {{
+            image-rendering: pixelated;
+            animation: rpgBob 1.8s ease-in-out infinite;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.55));
+        }}
+        .dq-window {{
+            border: 2px solid rgba(226, 232, 240, 0.75);
+            box-shadow: inset 0 0 0 2px #0f172a, 0 6px 18px rgba(0, 0, 0, 0.5);
         }}
     </style>
 </head>
@@ -660,74 +940,248 @@ def generate_dashboard(
             </div>
         </section>
 
-        <!-- 3. 4体のAI社員の経営会議ルーム -->
+        <!-- 3. 4体のAI社員の経営会議ルーム（ドラクエ風キャラ＆好調・普通・不調が一目でわかるステータス付き） -->
         <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg">
-            <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <span>💬 AI社員4人の朝刊会議ルーム</span>
-                <span class="text-xs font-normal text-slate-400">（なぜその銘柄をおすすめしたのかの話し合いログ）</span>
-            </h2>
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <span>🎮 AI社員4人の朝刊会議ルーム（パーティーステータス＆議論ログ）</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-0.5">
+                        難しい専門用語を読まなくても、上の「🌞好調 / ⛅普通 / 🌧️不調」アイコンと「💡1行まとめ」を見るだけで今の状況が3秒でわかります！
+                    </p>
+                </div>
+                <div class="flex items-center gap-2 text-[11px] bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-800 self-start sm:self-center">
+                    <span class="text-emerald-300 font-bold">🌞 好調＝買いチャンス</span>
+                    <span class="text-slate-600">|</span>
+                    <span class="text-amber-300 font-bold">⛅ 普通＝様子見</span>
+                    <span class="text-slate-600">|</span>
+                    <span class="text-rose-300 font-bold">🌧️ 不調＝警戒・ストップ</span>
+                </div>
+            </div>
+
+            <!-- ★ ドラクエ風・AI社員4人のコンディション早見ボード -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6 p-3.5 rounded-2xl bg-slate-950/90 dq-window">
+                <!-- パーティー①：ニュース調査担当 -->
+                <div class="rounded-xl p-3 border {cond_researcher['card_cls']} flex flex-col justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-14 h-14 rounded-xl bg-sky-950/80 border-2 border-sky-400/50 flex items-center justify-center shrink-0">
+                            {svg_researcher}
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-[10px] text-sky-300 font-bold">Lv.99 情報屋（吟遊詩人）</div>
+                            <div class="text-xs font-extrabold text-white truncate">ニュース調査担当</div>
+                            <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[11px] font-extrabold border {cond_researcher['badge_cls']}">
+                                {cond_researcher['short_label']} {cond_researcher['face_icon']}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="mt-2.5">
+                        <div class="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
+                            <span>好調度（テンション）</span>
+                            <span class="text-white font-bold">{cond_researcher['gauge_pct']}%</span>
+                        </div>
+                        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                            <div class="h-full {cond_researcher['bar_cls']}" style="width: {cond_researcher['gauge_pct']}%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- パーティー②：チャート分析担当 -->
+                <div class="rounded-xl p-3 border {cond_analyst['card_cls']} flex flex-col justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-14 h-14 rounded-xl bg-purple-950/80 border-2 border-purple-400/50 flex items-center justify-center shrink-0">
+                            {svg_analyst}
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-[10px] text-purple-300 font-bold">Lv.99 分析官（大賢者）</div>
+                            <div class="text-xs font-extrabold text-white truncate">チャート分析担当</div>
+                            <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[11px] font-extrabold border {cond_analyst['badge_cls']}">
+                                {cond_analyst['short_label']} {cond_analyst['face_icon']}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="mt-2.5">
+                        <div class="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
+                            <span>お買い得サイン度</span>
+                            <span class="text-white font-bold">{cond_analyst['gauge_pct']}%</span>
+                        </div>
+                        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                            <div class="h-full {cond_analyst['bar_cls']}" style="width: {cond_analyst['gauge_pct']}%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- パーティー③：ファンドマネージャー -->
+                <div class="rounded-xl p-3 border {cond_manager['card_cls']} flex flex-col justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-14 h-14 rounded-xl bg-amber-950/80 border-2 border-amber-400/60 flex items-center justify-center shrink-0">
+                            {svg_manager}
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-[10px] text-amber-300 font-bold">Lv.99 リーダー（勇者）</div>
+                            <div class="text-xs font-extrabold text-white truncate">ファンドマネージャー</div>
+                            <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[11px] font-extrabold border {cond_manager['badge_cls']}">
+                                {cond_manager['short_label']} {cond_manager['face_icon']}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="mt-2.5">
+                        <div class="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
+                            <span>おすすめ自信度</span>
+                            <span class="text-white font-bold">{cond_manager['gauge_pct']}%</span>
+                        </div>
+                        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                            <div class="h-full {cond_manager['bar_cls']}" style="width: {cond_manager['gauge_pct']}%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- パーティー④：資金・ルール管理担当 -->
+                <div class="rounded-xl p-3 border {cond_accountant['card_cls']} flex flex-col justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-14 h-14 rounded-xl bg-emerald-950/80 border-2 border-emerald-400/50 flex items-center justify-center shrink-0">
+                            {svg_accountant}
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-[10px] text-emerald-300 font-bold">Lv.99 金庫番（パラディン）</div>
+                            <div class="text-xs font-extrabold text-white truncate">資金・ルール管理担当</div>
+                            <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[11px] font-extrabold border {cond_accountant['badge_cls']}">
+                                {cond_accountant['short_label']} {cond_accountant['face_icon']}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="mt-2.5">
+                        <div class="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
+                            <span>お財布の安全度</span>
+                            <span class="text-white font-bold">{cond_accountant['gauge_pct']}%</span>
+                        </div>
+                        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                            <div class="h-full {cond_accountant['bar_cls']}" style="width: {cond_accountant['gauge_pct']}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 各社員の詳しい発言カード（1行の超要約つき） -->
             <div class="space-y-4">
                 <!-- ① 情報収集担当 -->
                 <div class="flex items-start gap-3.5">
-                    <div class="w-11 h-11 rounded-full bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-xl shrink-0">
-                        📰
+                    <div class="flex flex-col items-center gap-1 shrink-0">
+                        <div class="w-16 h-16 rounded-2xl bg-sky-950/80 dq-window flex items-center justify-center">
+                            {svg_researcher}
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border {cond_researcher['badge_cls']}">
+                            {cond_researcher['short_label']}
+                        </span>
                     </div>
-                    <div class="flex-1 bg-slate-950 border border-slate-800 rounded-2xl rounded-tl-none p-4">
-                        <div class="flex items-center gap-2 mb-1.5">
-                            <span class="font-bold text-sm text-white">ニュース調査担当</span>
-                            <span class="px-2 py-0.5 text-[11px] rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 font-medium">
-                                世界の経済ニュース・好悪材料の分析（情報収集担当）
+                    <div class="flex-1 {cond_researcher['card_cls']} border rounded-2xl rounded-tl-none p-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-extrabold text-sm text-white">ニュース調査担当</span>
+                                <span class="px-2 py-0.5 text-[11px] rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 font-medium">
+                                    世界の経済ニュース・好悪材料の分析（情報収集担当）
+                                </span>
+                            </div>
+                            <span class="px-3 py-1 rounded-full text-xs font-extrabold border {cond_researcher['badge_cls']}">
+                                状況判定：{cond_researcher['label']}
                             </span>
                         </div>
-                        <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-line">{researcher_text}</p>
+                        <!-- 専門用語なしの1行まとめボックス -->
+                        <div class="mb-2.5 px-3 py-2 rounded-xl border text-xs font-bold {cond_researcher['summary_box_cls']}">
+                            💡 つまり一言でいうと：{cond_researcher['summary_ja']}
+                        </div>
+                        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed whitespace-pre-line">{researcher_text}</p>
                     </div>
                 </div>
 
                 <!-- ② テクニカル分析担当 -->
                 <div class="flex items-start gap-3.5">
-                    <div class="w-11 h-11 rounded-full bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-xl shrink-0">
-                        📊
+                    <div class="flex flex-col items-center gap-1 shrink-0">
+                        <div class="w-16 h-16 rounded-2xl bg-purple-950/80 dq-window flex items-center justify-center">
+                            {svg_analyst}
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border {cond_analyst['badge_cls']}">
+                            {cond_analyst['short_label']}
+                        </span>
                     </div>
-                    <div class="flex-1 bg-slate-950 border border-slate-800 rounded-2xl rounded-tl-none p-4">
-                        <div class="flex items-center gap-2 mb-1.5">
-                            <span class="font-bold text-sm text-white">チャート・数値分析担当</span>
-                            <span class="px-2 py-0.5 text-[11px] rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-medium">
-                                株価の割安度・買い時タイミングの計算（テクニカル分析担当）
+                    <div class="flex-1 {cond_analyst['card_cls']} border rounded-2xl rounded-tl-none p-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-extrabold text-sm text-white">チャート・数値分析担当</span>
+                                <span class="px-2 py-0.5 text-[11px] rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-medium">
+                                    株価の割安度・買い時タイミングの計算（テクニカル分析担当）
+                                </span>
+                            </div>
+                            <span class="px-3 py-1 rounded-full text-xs font-extrabold border {cond_analyst['badge_cls']}">
+                                状況判定：{cond_analyst['label']}
                             </span>
                         </div>
-                        <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-line">{analyst_text}</p>
+                        <!-- 専門用語なしの1行まとめボックス -->
+                        <div class="mb-2.5 px-3 py-2 rounded-xl border text-xs font-bold {cond_analyst['summary_box_cls']}">
+                            💡 つまり一言でいうと：{cond_analyst['summary_ja']}
+                        </div>
+                        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed whitespace-pre-line">{analyst_text}</p>
                     </div>
                 </div>
 
                 <!-- ③ ファンドマネージャー -->
                 <div class="flex items-start gap-3.5">
-                    <div class="w-11 h-11 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xl shrink-0">
-                        👑
+                    <div class="flex flex-col items-center gap-1 shrink-0">
+                        <div class="w-16 h-16 rounded-2xl bg-amber-950/80 dq-window flex items-center justify-center">
+                            {svg_manager}
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border {cond_manager['badge_cls']}">
+                            {cond_manager['short_label']}
+                        </span>
                     </div>
-                    <div class="flex-1 bg-slate-950 border border-amber-500/30 rounded-2xl rounded-tl-none p-4">
-                        <div class="flex items-center gap-2 mb-1.5">
-                            <span class="font-bold text-sm text-white">ファンドマネージャー（投資判断リーダー）</span>
-                            <span class="px-2 py-0.5 text-[11px] rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-medium">
-                                社長へのおすすめ方針提案
+                    <div class="flex-1 {cond_manager['card_cls']} border rounded-2xl rounded-tl-none p-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-extrabold text-sm text-white">ファンドマネージャー（投資判断リーダー）</span>
+                                <span class="px-2 py-0.5 text-[11px] rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-medium">
+                                    社長へのおすすめ方針提案
+                                </span>
+                            </div>
+                            <span class="px-3 py-1 rounded-full text-xs font-extrabold border {cond_manager['badge_cls']}">
+                                状況判定：{cond_manager['label']}
                             </span>
                         </div>
-                        <p class="text-sm text-slate-200 leading-relaxed whitespace-pre-line">{manager_text}</p>
+                        <!-- 専門用語なしの1行まとめボックス -->
+                        <div class="mb-2.5 px-3 py-2 rounded-xl border text-xs font-bold {cond_manager['summary_box_cls']}">
+                            💡 つまり一言でいうと：{cond_manager['summary_ja']}
+                        </div>
+                        <p class="text-xs sm:text-sm text-slate-200 leading-relaxed whitespace-pre-line">{manager_text}</p>
                     </div>
                 </div>
 
                 <!-- ④ 執行・経理担当 -->
                 <div class="flex items-start gap-3.5">
-                    <div class="w-11 h-11 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-xl shrink-0">
-                        🛡️
+                    <div class="flex flex-col items-center gap-1 shrink-0">
+                        <div class="w-16 h-16 rounded-2xl bg-emerald-950/80 dq-window flex items-center justify-center">
+                            {svg_accountant}
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border {cond_accountant['badge_cls']}">
+                            {cond_accountant['short_label']}
+                        </span>
                     </div>
-                    <div class="flex-1 bg-slate-950 border border-emerald-500/30 rounded-2xl rounded-tl-none p-4">
-                        <div class="flex items-center gap-2 mb-1.5">
-                            <span class="font-bold text-sm text-white">資金・ルール管理担当（経理）</span>
-                            <span class="px-2 py-0.5 text-[11px] rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium">
-                                予算オーバーや危険な集中投資のチェック（執行・経理担当）
+                    <div class="flex-1 {cond_accountant['card_cls']} border rounded-2xl rounded-tl-none p-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-extrabold text-sm text-white">資金・ルール管理担当（経理）</span>
+                                <span class="px-2 py-0.5 text-[11px] rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium">
+                                    予算オーバーや危険な集中投資のチェック（執行・経理担当）
+                                </span>
+                            </div>
+                            <span class="px-3 py-1 rounded-full text-xs font-extrabold border {cond_accountant['badge_cls']}">
+                                状況判定：{cond_accountant['label']}
                             </span>
                         </div>
-                        <p class="text-sm text-slate-200 leading-relaxed whitespace-pre-line">{accountant_text}</p>
+                        <!-- 専門用語なしの1行まとめボックス -->
+                        <div class="mb-2.5 px-3 py-2 rounded-xl border text-xs font-bold {cond_accountant['summary_box_cls']}">
+                            💡 つまり一言でいうと：{cond_accountant['summary_ja']}
+                        </div>
+                        <p class="text-xs sm:text-sm text-slate-200 leading-relaxed whitespace-pre-line">{accountant_text}</p>
                     </div>
                 </div>
             </div>

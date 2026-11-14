@@ -30,6 +30,19 @@
             background-size: 200% 100%;
             animation: shimmerMove 2.2s linear infinite;
         }
+        @keyframes rpgBob {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-4px); }
+        }
+        .rpg-pixel-doll {
+            image-rendering: pixelated;
+            animation: rpgBob 1.8s ease-in-out infinite;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.55));
+        }
+        .dq-window {
+            border: 2px solid rgba(226, 232, 240, 0.75);
+            box-shadow: inset 0 0 0 2px #0f172a, 0 6px 18px rgba(0, 0, 0, 0.5);
+        }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased">
@@ -129,7 +142,7 @@
             </div>
             <div class="text-left sm:text-right text-xs text-slate-400 font-mono">
                 <div>分析した米国市場の日付: <span class="text-slate-200 font-semibold">2026-11-13</span></div>
-                <div>画面の最終更新日時: <span class="text-slate-200">2026-11-14T19:09:48+09:00</span></div>
+                <div>画面の最終更新日時: <span class="text-slate-200">2026-11-14T19:16:31+09:00</span></div>
             </div>
         </div>
     </header>
@@ -164,25 +177,25 @@
         </section>
 
         <!-- 2. 本日のAI経営会議 最終提案・結論カード（最上部・強調表示） -->
-        <section class="bg-slate-900/95 border-2 border-slate-600/60 rounded-2xl p-6 shadow-2xl">
+        <section class="bg-slate-900/95 border-2 border-emerald-500/50 rounded-2xl p-6 shadow-2xl">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800 pb-4">
                 <div class="flex items-center gap-3">
-                    <span class="px-4 py-1.5 rounded-full text-sm font-extrabold border bg-slate-500/20 text-slate-300 border-slate-500/40">
-                        HOLD（現金温存・見送り）
+                    <span class="px-4 py-1.5 rounded-full text-sm font-extrabold border bg-emerald-500/20 text-emerald-300 border-emerald-500/40">
+                        BUY（現物買付の提案）
                     </span>
                     <div>
                         <h2 class="text-lg sm:text-xl font-bold text-white">本日のAI経営会議 おすすめ方針・結論</h2>
-                        <p class="text-xs text-slate-400"></p>
+                        <p class="text-xs text-slate-400">【社長の決定待ち】AI提案: NVDA 1株 @ $162.85（合計 $162.85）の買付方針を提案</p>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-950/70 p-3 rounded-xl border border-slate-800 text-center">
                     <div>
                         <div class="text-[11px] text-slate-400">おすすめ銘柄</div>
-                        <div class="text-sm sm:text-base font-extrabold text-white">なし（見送り）</div>
+                        <div class="text-sm sm:text-base font-extrabold text-white">NVDA（エヌビディア）</div>
                     </div>
                     <div>
                         <div class="text-[11px] text-slate-400">株数（1株単位）</div>
-                        <div class="text-base font-extrabold text-white font-mono">0 株</div>
+                        <div class="text-base font-extrabold text-white font-mono">1 株</div>
                     </div>
                     <div>
                         <div class="text-[11px] text-slate-400">1株あたりの株価</div>
@@ -190,7 +203,7 @@
                     </div>
                     <div>
                         <div class="text-[11px] text-slate-400">必要な合計金額</div>
-                        <div class="text-base font-extrabold text-emerald-400 font-mono">$0.00</div>
+                        <div class="text-base font-extrabold text-emerald-400 font-mono">$162.85</div>
                     </div>
                 </div>
             </div>
@@ -205,6 +218,16 @@
             </div>
 
             
+        <div class="mt-4 pt-4 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div class="text-xs text-amber-300 font-medium">
+                👑 <b>社長（あなた）の最終決定待ち：</b>AIは方針を提案した段階です。実際に買付したら右のボタンを押すと口座残高に反映されます。
+            </div>
+            <button type="button" onclick="approveAiProposal('BUY', 'NVDA', 1, 162.85)"
+                class="bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/50 text-white font-extrabold text-sm px-5 py-2.5 rounded-xl shadow-lg transition shrink-0 flex items-center justify-center gap-2">
+                <span>✅ このAI提案通りに決定する（NVDA 1株の買付を反映）</span>
+            </button>
+        </div>
+        
         </section>
 
         <!-- ★オーナー（社長）指令室 ＆ 実売買報告パネル -->
@@ -352,74 +375,495 @@
             </div>
         </section>
 
-        <!-- 3. 4体のAI社員の経営会議ルーム -->
+        <!-- 3. 4体のAI社員の経営会議ルーム（ドラクエ風キャラ＆好調・普通・不調が一目でわかるステータス付き） -->
         <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg">
-            <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <span>💬 AI社員4人の朝刊会議ルーム</span>
-                <span class="text-xs font-normal text-slate-400">（なぜその銘柄をおすすめしたのかの話し合いログ）</span>
-            </h2>
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <span>🎮 AI社員4人の朝刊会議ルーム（パーティーステータス＆議論ログ）</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-0.5">
+                        難しい専門用語を読まなくても、上の「🌞好調 / ⛅普通 / 🌧️不調」アイコンと「💡1行まとめ」を見るだけで今の状況が3秒でわかります！
+                    </p>
+                </div>
+                <div class="flex items-center gap-2 text-[11px] bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-800 self-start sm:self-center">
+                    <span class="text-emerald-300 font-bold">🌞 好調＝買いチャンス</span>
+                    <span class="text-slate-600">|</span>
+                    <span class="text-amber-300 font-bold">⛅ 普通＝様子見</span>
+                    <span class="text-slate-600">|</span>
+                    <span class="text-rose-300 font-bold">🌧️ 不調＝警戒・ストップ</span>
+                </div>
+            </div>
+
+            <!-- ★ ドラクエ風・AI社員4人のコンディション早見ボード -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6 p-3.5 rounded-2xl bg-slate-950/90 dq-window">
+                <!-- パーティー①：ニュース調査担当 -->
+                <div class="rounded-xl p-3 border border-emerald-500/50 bg-gradient-to-br from-slate-950 via-slate-950 to-emerald-950/30 flex flex-col justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-14 h-14 rounded-xl bg-sky-950/80 border-2 border-sky-400/50 flex items-center justify-center shrink-0">
+                            
+        <svg viewBox="0 0 16 16" class="w-12 h-12 rpg-pixel-doll" shape-rendering="crispEdges">
+            <!-- 白い羽根飾り -->
+            <rect x="10" y="0" width="2" height="1" fill="#ffffff"/>
+            <rect x="11" y="1" width="2" height="1" fill="#e2e8f0"/>
+            <!-- 青い冒険者ベレー帽 -->
+            <rect x="4" y="1" width="6" height="1" fill="#0284c7"/>
+            <rect x="3" y="2" width="9" height="2" fill="#38bdf8"/>
+            <rect x="3" y="4" width="10" height="1" fill="#0369a1"/>
+            <rect x="7" y="3" width="2" height="1" fill="#fbbf24"/>
+            <!-- 髪と可愛い顔 -->
+            <rect x="3" y="5" width="2" height="3" fill="#92400e"/>
+            <rect x="11" y="5" width="2" height="3" fill="#92400e"/>
+            <rect x="5" y="5" width="6" height="4" fill="#fde68a"/>
+            <!-- キラキラの目とピンクのほっぺ -->
+            <rect x="6" y="6" width="1" height="2" fill="#0f172a"/>
+            <rect x="9" y="6" width="1" height="2" fill="#0f172a"/>
+            <rect x="6" y="6" width="1" height="1" fill="#ffffff"/>
+            <rect x="9" y="6" width="1" height="1" fill="#ffffff"/>
+            <rect x="5" y="7" width="1" height="1" fill="#fb7185"/>
+            <rect x="10" y="7" width="1" height="1" fill="#fb7185"/>
+            <rect x="7" y="8" width="2" height="1" fill="#f43f5e"/>
+            <!-- 水色の旅人マントと服 -->
+            <rect x="4" y="9" width="8" height="4" fill="#0ea5e9"/>
+            <rect x="6" y="9" width="4" height="1" fill="#fef08a"/>
+            <rect x="5" y="10" width="6" height="2" fill="#0284c7"/>
+            <!-- 手に持ったニュースの巻物 -->
+            <rect x="11" y="9" width="3" height="3" fill="#fef3c7"/>
+            <rect x="11" y="10" width="3" height="1" fill="#d97706"/>
+            <!-- ブーツ -->
+            <rect x="5" y="13" width="2" height="2" fill="#78350f"/>
+            <rect x="9" y="13" width="2" height="2" fill="#78350f"/>
+        </svg>
+        
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-[10px] text-sky-300 font-bold">Lv.99 情報屋（吟遊詩人）</div>
+                            <div class="text-xs font-extrabold text-white truncate">ニュース調査担当</div>
+                            <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[11px] font-extrabold border bg-emerald-500/25 text-emerald-200 border-emerald-400/60 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+                                🌞 好調！ 😆✨
+                            </span>
+                        </div>
+                    </div>
+                    <div class="mt-2.5">
+                        <div class="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
+                            <span>好調度（テンション）</span>
+                            <span class="text-white font-bold">92%</span>
+                        </div>
+                        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-emerald-500 to-teal-300" style="width: 92%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- パーティー②：チャート分析担当 -->
+                <div class="rounded-xl p-3 border border-emerald-500/50 bg-gradient-to-br from-slate-950 via-slate-950 to-emerald-950/30 flex flex-col justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-14 h-14 rounded-xl bg-purple-950/80 border-2 border-purple-400/50 flex items-center justify-center shrink-0">
+                            
+        <svg viewBox="0 0 16 16" class="w-12 h-12 rpg-pixel-doll" shape-rendering="crispEdges">
+            <!-- とんがり魔法使い帽子 -->
+            <rect x="7" y="0" width="2" height="1" fill="#7e22ce"/>
+            <rect x="6" y="1" width="4" height="1" fill="#9333ea"/>
+            <rect x="5" y="2" width="6" height="2" fill="#a855f7"/>
+            <rect x="4" y="3" width="8" height="1" fill="#fbbf24"/>
+            <rect x="2" y="4" width="12" height="1" fill="#6b21a8"/>
+            <!-- 銀髪と可愛い顔 -->
+            <rect x="3" y="5" width="2" height="4" fill="#e2e8f0"/>
+            <rect x="11" y="5" width="2" height="4" fill="#e2e8f0"/>
+            <rect x="5" y="5" width="6" height="4" fill="#fde68a"/>
+            <!-- 知的なメガネ＆目・ほっぺ -->
+            <rect x="5" y="6" width="2" height="2" fill="#38bdf8"/>
+            <rect x="9" y="6" width="2" height="2" fill="#38bdf8"/>
+            <rect x="6" y="6" width="1" height="2" fill="#0f172a"/>
+            <rect x="9" y="6" width="1" height="2" fill="#0f172a"/>
+            <rect x="7" y="6" width="2" height="1" fill="#cbd5e1"/>
+            <rect x="5" y="8" width="1" height="1" fill="#fb7185"/>
+            <rect x="10" y="8" width="1" height="1" fill="#fb7185"/>
+            <!-- 紫の賢者ローブ -->
+            <rect x="4" y="9" width="8" height="4" fill="#9333ea"/>
+            <rect x="7" y="9" width="2" height="4" fill="#fbbf24"/>
+            <!-- 光るチャート水晶玉 -->
+            <rect x="11" y="9" width="3" height="3" fill="#22d3ee"/>
+            <rect x="12" y="9" width="1" height="1" fill="#ffffff"/>
+            <!-- 靴 -->
+            <rect x="5" y="13" width="2" height="2" fill="#581c87"/>
+            <rect x="9" y="13" width="2" height="2" fill="#581c87"/>
+        </svg>
+        
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-[10px] text-purple-300 font-bold">Lv.99 分析官（大賢者）</div>
+                            <div class="text-xs font-extrabold text-white truncate">チャート分析担当</div>
+                            <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[11px] font-extrabold border bg-emerald-500/25 text-emerald-200 border-emerald-400/60 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+                                🌞 好調！ 😆✨
+                            </span>
+                        </div>
+                    </div>
+                    <div class="mt-2.5">
+                        <div class="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
+                            <span>お買い得サイン度</span>
+                            <span class="text-white font-bold">92%</span>
+                        </div>
+                        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-emerald-500 to-teal-300" style="width: 92%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- パーティー③：ファンドマネージャー -->
+                <div class="rounded-xl p-3 border border-emerald-500/50 bg-gradient-to-br from-slate-950 via-slate-950 to-emerald-950/30 flex flex-col justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-14 h-14 rounded-xl bg-amber-950/80 border-2 border-amber-400/60 flex items-center justify-center shrink-0">
+                            
+        <svg viewBox="0 0 16 16" class="w-12 h-12 rpg-pixel-doll" shape-rendering="crispEdges">
+            <!-- 黄金の王冠とルビー -->
+            <rect x="4" y="1" width="1" height="1" fill="#fbbf24"/>
+            <rect x="7" y="0" width="2" height="2" fill="#fbbf24"/>
+            <rect x="11" y="1" width="1" height="1" fill="#fbbf24"/>
+            <rect x="4" y="2" width="8" height="2" fill="#f59e0b"/>
+            <rect x="7" y="2" width="2" height="1" fill="#f43f5e"/>
+            <!-- 勇者の髪と可愛い顔 -->
+            <rect x="3" y="4" width="10" height="1" fill="#b45309"/>
+            <rect x="3" y="5" width="2" height="3" fill="#b45309"/>
+            <rect x="11" y="5" width="2" height="3" fill="#b45309"/>
+            <rect x="5" y="5" width="6" height="4" fill="#fde68a"/>
+            <!-- キリッとした目とピンクのほっぺ -->
+            <rect x="6" y="6" width="1" height="2" fill="#0f172a"/>
+            <rect x="9" y="6" width="1" height="2" fill="#0f172a"/>
+            <rect x="6" y="6" width="1" height="1" fill="#ffffff"/>
+            <rect x="9" y="6" width="1" height="1" fill="#ffffff"/>
+            <rect x="5" y="7" width="1" height="1" fill="#fb7185"/>
+            <rect x="10" y="7" width="1" height="1" fill="#fb7185"/>
+            <rect x="7" y="8" width="2" height="1" fill="#ef4444"/>
+            <!-- 王様の赤いマントと黄金アーマー -->
+            <rect x="3" y="9" width="10" height="4" fill="#e11d48"/>
+            <rect x="5" y="9" width="6" height="4" fill="#fbbf24"/>
+            <rect x="6" y="10" width="4" height="2" fill="#2563eb"/>
+            <!-- 黄金の指揮剣 -->
+            <rect x="13" y="6" width="1" height="4" fill="#fef08a"/>
+            <rect x="12" y="9" width="3" height="1" fill="#f59e0b"/>
+            <!-- ブーツ -->
+            <rect x="5" y="13" width="2" height="2" fill="#92400e"/>
+            <rect x="9" y="13" width="2" height="2" fill="#92400e"/>
+        </svg>
+        
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-[10px] text-amber-300 font-bold">Lv.99 リーダー（勇者）</div>
+                            <div class="text-xs font-extrabold text-white truncate">ファンドマネージャー</div>
+                            <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[11px] font-extrabold border bg-emerald-500/25 text-emerald-200 border-emerald-400/60 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+                                🌞 好調！ 😆✨
+                            </span>
+                        </div>
+                    </div>
+                    <div class="mt-2.5">
+                        <div class="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
+                            <span>おすすめ自信度</span>
+                            <span class="text-white font-bold">92%</span>
+                        </div>
+                        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-emerald-500 to-teal-300" style="width: 92%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- パーティー④：資金・ルール管理担当 -->
+                <div class="rounded-xl p-3 border border-emerald-500/50 bg-gradient-to-br from-slate-950 via-slate-950 to-emerald-950/30 flex flex-col justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-14 h-14 rounded-xl bg-emerald-950/80 border-2 border-emerald-400/50 flex items-center justify-center shrink-0">
+                            
+    <svg viewBox="0 0 16 16" class="w-12 h-12 rpg-pixel-doll" shape-rendering="crispEdges">
+        <!-- ナイトの羽根飾り＆エメラルド兜 -->
+        <rect x="7" y="0" width="2" height="2" fill="#10b981"/>
+        <rect x="4" y="2" width="8" height="2" fill="#cbd5e1"/>
+        <rect x="3" y="4" width="10" height="1" fill="#94a3b8"/>
+        <rect x="7" y="3" width="2" height="1" fill="#10b981"/>
+        <!-- 兜から覗く可愛い顔 -->
+        <rect x="3" y="5" width="2" height="4" fill="#64748b"/>
+        <rect x="11" y="5" width="2" height="4" fill="#64748b"/>
+        <rect x="5" y="5" width="6" height="4" fill="#fde68a"/>
+        <rect x="6" y="6" width="1" height="2" fill="#0f172a"/>
+        <rect x="9" y="6" width="1" height="2" fill="#0f172a"/>
+        <rect x="6" y="6" width="1" height="1" fill="#ffffff"/>
+        <rect x="9" y="6" width="1" height="1" fill="#ffffff"/>
+        <rect x="5" y="7" width="1" height="1" fill="#fb7185"/>
+        <rect x="10" y="7" width="1" height="1" fill="#fb7185"/>
+        <!-- エメラルド＆シルバーの鎧 -->
+        <rect x="4" y="9" width="8" height="4" fill="#10b981"/>
+        <rect x="5" y="9" width="6" height="3" fill="#e2e8f0"/>
+        <rect x="7" y="10" width="2" height="2" fill="#059669"/>
+        <!-- 鉄壁のガード盾 -->
+        <rect x="1" y="8" width="4" height="5" fill="#fbbf24"/>
+        <rect x="2" y="9" width="2" height="3" fill="#059669"/>
+        <!-- 鎧ブーツ -->
+        <rect x="5" y="13" width="2" height="2" fill="#475569"/>
+        <rect x="9" y="13" width="2" height="2" fill="#475569"/>
+    </svg>
+    
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-[10px] text-emerald-300 font-bold">Lv.99 金庫番（パラディン）</div>
+                            <div class="text-xs font-extrabold text-white truncate">資金・ルール管理担当</div>
+                            <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[11px] font-extrabold border bg-emerald-500/25 text-emerald-200 border-emerald-400/60 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+                                🌞 好調！ 😆✨
+                            </span>
+                        </div>
+                    </div>
+                    <div class="mt-2.5">
+                        <div class="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
+                            <span>お財布の安全度</span>
+                            <span class="text-white font-bold">92%</span>
+                        </div>
+                        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-emerald-500 to-teal-300" style="width: 92%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 各社員の詳しい発言カード（1行の超要約つき） -->
             <div class="space-y-4">
                 <!-- ① 情報収集担当 -->
                 <div class="flex items-start gap-3.5">
-                    <div class="w-11 h-11 rounded-full bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-xl shrink-0">
-                        📰
+                    <div class="flex flex-col items-center gap-1 shrink-0">
+                        <div class="w-16 h-16 rounded-2xl bg-sky-950/80 dq-window flex items-center justify-center">
+                            
+        <svg viewBox="0 0 16 16" class="w-12 h-12 rpg-pixel-doll" shape-rendering="crispEdges">
+            <!-- 白い羽根飾り -->
+            <rect x="10" y="0" width="2" height="1" fill="#ffffff"/>
+            <rect x="11" y="1" width="2" height="1" fill="#e2e8f0"/>
+            <!-- 青い冒険者ベレー帽 -->
+            <rect x="4" y="1" width="6" height="1" fill="#0284c7"/>
+            <rect x="3" y="2" width="9" height="2" fill="#38bdf8"/>
+            <rect x="3" y="4" width="10" height="1" fill="#0369a1"/>
+            <rect x="7" y="3" width="2" height="1" fill="#fbbf24"/>
+            <!-- 髪と可愛い顔 -->
+            <rect x="3" y="5" width="2" height="3" fill="#92400e"/>
+            <rect x="11" y="5" width="2" height="3" fill="#92400e"/>
+            <rect x="5" y="5" width="6" height="4" fill="#fde68a"/>
+            <!-- キラキラの目とピンクのほっぺ -->
+            <rect x="6" y="6" width="1" height="2" fill="#0f172a"/>
+            <rect x="9" y="6" width="1" height="2" fill="#0f172a"/>
+            <rect x="6" y="6" width="1" height="1" fill="#ffffff"/>
+            <rect x="9" y="6" width="1" height="1" fill="#ffffff"/>
+            <rect x="5" y="7" width="1" height="1" fill="#fb7185"/>
+            <rect x="10" y="7" width="1" height="1" fill="#fb7185"/>
+            <rect x="7" y="8" width="2" height="1" fill="#f43f5e"/>
+            <!-- 水色の旅人マントと服 -->
+            <rect x="4" y="9" width="8" height="4" fill="#0ea5e9"/>
+            <rect x="6" y="9" width="4" height="1" fill="#fef08a"/>
+            <rect x="5" y="10" width="6" height="2" fill="#0284c7"/>
+            <!-- 手に持ったニュースの巻物 -->
+            <rect x="11" y="9" width="3" height="3" fill="#fef3c7"/>
+            <rect x="11" y="10" width="3" height="1" fill="#d97706"/>
+            <!-- ブーツ -->
+            <rect x="5" y="13" width="2" height="2" fill="#78350f"/>
+            <rect x="9" y="13" width="2" height="2" fill="#78350f"/>
+        </svg>
+        
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border bg-emerald-500/25 text-emerald-200 border-emerald-400/60 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+                            🌞 好調！
+                        </span>
                     </div>
-                    <div class="flex-1 bg-slate-950 border border-slate-800 rounded-2xl rounded-tl-none p-4">
-                        <div class="flex items-center gap-2 mb-1.5">
-                            <span class="font-bold text-sm text-white">ニュース調査担当</span>
-                            <span class="px-2 py-0.5 text-[11px] rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 font-medium">
-                                世界の経済ニュース・好悪材料の分析（情報収集担当）
+                    <div class="flex-1 border-emerald-500/50 bg-gradient-to-br from-slate-950 via-slate-950 to-emerald-950/30 border rounded-2xl rounded-tl-none p-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-extrabold text-sm text-white">ニュース調査担当</span>
+                                <span class="px-2 py-0.5 text-[11px] rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 font-medium">
+                                    世界の経済ニュース・好悪材料の分析（情報収集担当）
+                                </span>
+                            </div>
+                            <span class="px-3 py-1 rounded-full text-xs font-extrabold border bg-emerald-500/25 text-emerald-200 border-emerald-400/60 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+                                状況判定：🌞 好調（買いチャンス！）
                             </span>
                         </div>
-                        <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-line">NVIDIA（エヌビディア）は競合他社の動きや米中関係を巡るニュース報道によって短期的な売り圧力を受けていますが、AI向けGPU需要の根幹は強力であり、現在の株価下落は過剰反応と判断できます。</p>
+                        <!-- 専門用語なしの1行まとめボックス -->
+                        <div class="mb-2.5 px-3 py-2 rounded-xl border text-xs font-bold bg-emerald-950/50 border-emerald-500/40 text-emerald-200">
+                            💡 つまり一言でいうと：「ニュース面は好調！NVDA（エヌビディア）の将来性に期待できる明るい状況です✨」
+                        </div>
+                        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed whitespace-pre-line">NVIDIA（エヌビディア）は競合他社の動きや米中関係を巡るニュース報道によって短期的な売り圧力を受けていますが、AI向けGPU需要の根幹は強力であり、現在の株価下落は過剰反応と判断できます。</p>
                     </div>
                 </div>
 
                 <!-- ② テクニカル分析担当 -->
                 <div class="flex items-start gap-3.5">
-                    <div class="w-11 h-11 rounded-full bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-xl shrink-0">
-                        📊
+                    <div class="flex flex-col items-center gap-1 shrink-0">
+                        <div class="w-16 h-16 rounded-2xl bg-purple-950/80 dq-window flex items-center justify-center">
+                            
+        <svg viewBox="0 0 16 16" class="w-12 h-12 rpg-pixel-doll" shape-rendering="crispEdges">
+            <!-- とんがり魔法使い帽子 -->
+            <rect x="7" y="0" width="2" height="1" fill="#7e22ce"/>
+            <rect x="6" y="1" width="4" height="1" fill="#9333ea"/>
+            <rect x="5" y="2" width="6" height="2" fill="#a855f7"/>
+            <rect x="4" y="3" width="8" height="1" fill="#fbbf24"/>
+            <rect x="2" y="4" width="12" height="1" fill="#6b21a8"/>
+            <!-- 銀髪と可愛い顔 -->
+            <rect x="3" y="5" width="2" height="4" fill="#e2e8f0"/>
+            <rect x="11" y="5" width="2" height="4" fill="#e2e8f0"/>
+            <rect x="5" y="5" width="6" height="4" fill="#fde68a"/>
+            <!-- 知的なメガネ＆目・ほっぺ -->
+            <rect x="5" y="6" width="2" height="2" fill="#38bdf8"/>
+            <rect x="9" y="6" width="2" height="2" fill="#38bdf8"/>
+            <rect x="6" y="6" width="1" height="2" fill="#0f172a"/>
+            <rect x="9" y="6" width="1" height="2" fill="#0f172a"/>
+            <rect x="7" y="6" width="2" height="1" fill="#cbd5e1"/>
+            <rect x="5" y="8" width="1" height="1" fill="#fb7185"/>
+            <rect x="10" y="8" width="1" height="1" fill="#fb7185"/>
+            <!-- 紫の賢者ローブ -->
+            <rect x="4" y="9" width="8" height="4" fill="#9333ea"/>
+            <rect x="7" y="9" width="2" height="4" fill="#fbbf24"/>
+            <!-- 光るチャート水晶玉 -->
+            <rect x="11" y="9" width="3" height="3" fill="#22d3ee"/>
+            <rect x="12" y="9" width="1" height="1" fill="#ffffff"/>
+            <!-- 靴 -->
+            <rect x="5" y="13" width="2" height="2" fill="#581c87"/>
+            <rect x="9" y="13" width="2" height="2" fill="#581c87"/>
+        </svg>
+        
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border bg-emerald-500/25 text-emerald-200 border-emerald-400/60 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+                            🌞 好調！
+                        </span>
                     </div>
-                    <div class="flex-1 bg-slate-950 border border-slate-800 rounded-2xl rounded-tl-none p-4">
-                        <div class="flex items-center gap-2 mb-1.5">
-                            <span class="font-bold text-sm text-white">チャート・数値分析担当</span>
-                            <span class="px-2 py-0.5 text-[11px] rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-medium">
-                                株価の割安度・買い時タイミングの計算（テクニカル分析担当）
+                    <div class="flex-1 border-emerald-500/50 bg-gradient-to-br from-slate-950 via-slate-950 to-emerald-950/30 border rounded-2xl rounded-tl-none p-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-extrabold text-sm text-white">チャート・数値分析担当</span>
+                                <span class="px-2 py-0.5 text-[11px] rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-medium">
+                                    株価の割安度・買い時タイミングの計算（テクニカル分析担当）
+                                </span>
+                            </div>
+                            <span class="px-3 py-1 rounded-full text-xs font-extrabold border bg-emerald-500/25 text-emerald-200 border-emerald-400/60 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+                                状況判定：🌞 好調（買いチャンス！）
                             </span>
                         </div>
-                        <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-line">テクニカル面ではRSI(14)が19.12と極度の売られすぎ領域に達しており、25日移動平均線からの乖離率も-19.88%と自律反発が強く見込める水準です。出来高変化率1.74と出来高を伴った押し目であり、買付に最適な水準です。</p>
+                        <!-- 専門用語なしの1行まとめボックス -->
+                        <div class="mb-2.5 px-3 py-2 rounded-xl border text-xs font-bold bg-emerald-950/50 border-emerald-500/40 text-emerald-200">
+                            💡 つまり一言でいうと：「チャートにお買い得サイン点灯！今から反発が狙える絶好調な買い場です📈」
+                        </div>
+                        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed whitespace-pre-line">テクニカル面ではRSI(14)が19.12と極度の売られすぎ領域に達しており、25日移動平均線からの乖離率も-19.88%と自律反発が強く見込める水準です。出来高変化率1.74と出来高を伴った押し目であり、買付に最適な水準です。</p>
                     </div>
                 </div>
 
                 <!-- ③ ファンドマネージャー -->
                 <div class="flex items-start gap-3.5">
-                    <div class="w-11 h-11 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xl shrink-0">
-                        👑
+                    <div class="flex flex-col items-center gap-1 shrink-0">
+                        <div class="w-16 h-16 rounded-2xl bg-amber-950/80 dq-window flex items-center justify-center">
+                            
+        <svg viewBox="0 0 16 16" class="w-12 h-12 rpg-pixel-doll" shape-rendering="crispEdges">
+            <!-- 黄金の王冠とルビー -->
+            <rect x="4" y="1" width="1" height="1" fill="#fbbf24"/>
+            <rect x="7" y="0" width="2" height="2" fill="#fbbf24"/>
+            <rect x="11" y="1" width="1" height="1" fill="#fbbf24"/>
+            <rect x="4" y="2" width="8" height="2" fill="#f59e0b"/>
+            <rect x="7" y="2" width="2" height="1" fill="#f43f5e"/>
+            <!-- 勇者の髪と可愛い顔 -->
+            <rect x="3" y="4" width="10" height="1" fill="#b45309"/>
+            <rect x="3" y="5" width="2" height="3" fill="#b45309"/>
+            <rect x="11" y="5" width="2" height="3" fill="#b45309"/>
+            <rect x="5" y="5" width="6" height="4" fill="#fde68a"/>
+            <!-- キリッとした目とピンクのほっぺ -->
+            <rect x="6" y="6" width="1" height="2" fill="#0f172a"/>
+            <rect x="9" y="6" width="1" height="2" fill="#0f172a"/>
+            <rect x="6" y="6" width="1" height="1" fill="#ffffff"/>
+            <rect x="9" y="6" width="1" height="1" fill="#ffffff"/>
+            <rect x="5" y="7" width="1" height="1" fill="#fb7185"/>
+            <rect x="10" y="7" width="1" height="1" fill="#fb7185"/>
+            <rect x="7" y="8" width="2" height="1" fill="#ef4444"/>
+            <!-- 王様の赤いマントと黄金アーマー -->
+            <rect x="3" y="9" width="10" height="4" fill="#e11d48"/>
+            <rect x="5" y="9" width="6" height="4" fill="#fbbf24"/>
+            <rect x="6" y="10" width="4" height="2" fill="#2563eb"/>
+            <!-- 黄金の指揮剣 -->
+            <rect x="13" y="6" width="1" height="4" fill="#fef08a"/>
+            <rect x="12" y="9" width="3" height="1" fill="#f59e0b"/>
+            <!-- ブーツ -->
+            <rect x="5" y="13" width="2" height="2" fill="#92400e"/>
+            <rect x="9" y="13" width="2" height="2" fill="#92400e"/>
+        </svg>
+        
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border bg-emerald-500/25 text-emerald-200 border-emerald-400/60 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+                            🌞 好調！
+                        </span>
                     </div>
-                    <div class="flex-1 bg-slate-950 border border-amber-500/30 rounded-2xl rounded-tl-none p-4">
-                        <div class="flex items-center gap-2 mb-1.5">
-                            <span class="font-bold text-sm text-white">ファンドマネージャー（投資判断リーダー）</span>
-                            <span class="px-2 py-0.5 text-[11px] rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-medium">
-                                社長へのおすすめ方針提案
+                    <div class="flex-1 border-emerald-500/50 bg-gradient-to-br from-slate-950 via-slate-950 to-emerald-950/30 border rounded-2xl rounded-tl-none p-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-extrabold text-sm text-white">ファンドマネージャー（投資判断リーダー）</span>
+                                <span class="px-2 py-0.5 text-[11px] rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-medium">
+                                    社長へのおすすめ方針提案
+                                </span>
+                            </div>
+                            <span class="px-3 py-1 rounded-full text-xs font-extrabold border bg-emerald-500/25 text-emerald-200 border-emerald-400/60 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+                                状況判定：🌞 好調（買いチャンス！）
                             </span>
                         </div>
-                        <p class="text-sm text-slate-200 leading-relaxed whitespace-pre-line">総資産が$1,000未満であるため初期フェーズ特例を適用し、35%制限を免除してNVDA（エヌビディア）を1株（$162.85）購入する方針を提案します。現金残高$330.00の範囲内に収まり、反発期待の非常に高い本銘柄を最初の投資先として推奨します。</p>
+                        <!-- 専門用語なしの1行まとめボックス -->
+                        <div class="mb-2.5 px-3 py-2 rounded-xl border text-xs font-bold bg-emerald-950/50 border-emerald-500/40 text-emerald-200">
+                            💡 つまり一言でいうと：「今は攻めるチャンス！自信を持って『NVDA（エヌビディア）』の購入を提案します👑」
+                        </div>
+                        <p class="text-xs sm:text-sm text-slate-200 leading-relaxed whitespace-pre-line">総資産が$1,000未満であるため初期フェーズ特例を適用し、35%制限を免除してNVDA（エヌビディア）を1株（$162.85）購入する方針を提案します。現金残高$330.00の範囲内に収まり、反発期待の非常に高い本銘柄を最初の投資先として推奨します。</p>
                     </div>
                 </div>
 
                 <!-- ④ 執行・経理担当 -->
                 <div class="flex items-start gap-3.5">
-                    <div class="w-11 h-11 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-xl shrink-0">
-                        🛡️
+                    <div class="flex flex-col items-center gap-1 shrink-0">
+                        <div class="w-16 h-16 rounded-2xl bg-emerald-950/80 dq-window flex items-center justify-center">
+                            
+    <svg viewBox="0 0 16 16" class="w-12 h-12 rpg-pixel-doll" shape-rendering="crispEdges">
+        <!-- ナイトの羽根飾り＆エメラルド兜 -->
+        <rect x="7" y="0" width="2" height="2" fill="#10b981"/>
+        <rect x="4" y="2" width="8" height="2" fill="#cbd5e1"/>
+        <rect x="3" y="4" width="10" height="1" fill="#94a3b8"/>
+        <rect x="7" y="3" width="2" height="1" fill="#10b981"/>
+        <!-- 兜から覗く可愛い顔 -->
+        <rect x="3" y="5" width="2" height="4" fill="#64748b"/>
+        <rect x="11" y="5" width="2" height="4" fill="#64748b"/>
+        <rect x="5" y="5" width="6" height="4" fill="#fde68a"/>
+        <rect x="6" y="6" width="1" height="2" fill="#0f172a"/>
+        <rect x="9" y="6" width="1" height="2" fill="#0f172a"/>
+        <rect x="6" y="6" width="1" height="1" fill="#ffffff"/>
+        <rect x="9" y="6" width="1" height="1" fill="#ffffff"/>
+        <rect x="5" y="7" width="1" height="1" fill="#fb7185"/>
+        <rect x="10" y="7" width="1" height="1" fill="#fb7185"/>
+        <!-- エメラルド＆シルバーの鎧 -->
+        <rect x="4" y="9" width="8" height="4" fill="#10b981"/>
+        <rect x="5" y="9" width="6" height="3" fill="#e2e8f0"/>
+        <rect x="7" y="10" width="2" height="2" fill="#059669"/>
+        <!-- 鉄壁のガード盾 -->
+        <rect x="1" y="8" width="4" height="5" fill="#fbbf24"/>
+        <rect x="2" y="9" width="2" height="3" fill="#059669"/>
+        <!-- 鎧ブーツ -->
+        <rect x="5" y="13" width="2" height="2" fill="#475569"/>
+        <rect x="9" y="13" width="2" height="2" fill="#475569"/>
+    </svg>
+    
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border bg-emerald-500/25 text-emerald-200 border-emerald-400/60 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+                            🌞 好調！
+                        </span>
                     </div>
-                    <div class="flex-1 bg-slate-950 border border-emerald-500/30 rounded-2xl rounded-tl-none p-4">
-                        <div class="flex items-center gap-2 mb-1.5">
-                            <span class="font-bold text-sm text-white">資金・ルール管理担当（経理）</span>
-                            <span class="px-2 py-0.5 text-[11px] rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium">
-                                予算オーバーや危険な集中投資のチェック（執行・経理担当）
+                    <div class="flex-1 border-emerald-500/50 bg-gradient-to-br from-slate-950 via-slate-950 to-emerald-950/30 border rounded-2xl rounded-tl-none p-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-extrabold text-sm text-white">資金・ルール管理担当（経理）</span>
+                                <span class="px-2 py-0.5 text-[11px] rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium">
+                                    予算オーバーや危険な集中投資のチェック（執行・経理担当）
+                                </span>
+                            </div>
+                            <span class="px-3 py-1 rounded-full text-xs font-extrabold border bg-emerald-500/25 text-emerald-200 border-emerald-400/60 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+                                状況判定：🌞 好調（ルール合格！）
                             </span>
                         </div>
-                        <p class="text-sm text-slate-200 leading-relaxed whitespace-pre-line"></p>
+                        <!-- 専門用語なしの1行まとめボックス -->
+                        <div class="mb-2.5 px-3 py-2 rounded-xl border text-xs font-bold bg-emerald-950/50 border-emerald-500/40 text-emerald-200">
+                            💡 つまり一言でいうと：「予算も安全ルールも100点クリア！安心して決定ボタンを押せます🛡️」
+                        </div>
+                        <p class="text-xs sm:text-sm text-slate-200 leading-relaxed whitespace-pre-line">【資金・ルール検証OK（社長の最終決定待ち）】NVDA 1株 @ $162.85（合計 $162.85）は現金残高（$330.00）およびリスク管理ルールをクリアしています。
+AI会議では「方針の提案」までを行い、まだ口座の現金は動かしていません。実際に購入される場合は、上の「✅ このAI提案通りに決定する」ボタンを押してください。</p>
                     </div>
                 </div>
             </div>
@@ -503,6 +947,42 @@
                     </thead>
                     <tbody>
                         
+                <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition text-sm">
+                    <td class="py-3 px-4 font-mono text-slate-300">2026-11-14</td>
+                    <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-600/30 text-slate-300 border border-slate-600/40">見送り / 提案</span></td>
+                    <td class="py-3 px-4 font-bold text-white">なし（見送り）</td>
+                    <td class="py-3 px-4 text-slate-400 text-xs">取引なし（様子見）</td>
+                    <td class="py-3 px-4 text-right font-mono">0株</td>
+                    <td class="py-3 px-4 text-right font-mono">$0.00</td>
+                    <td class="py-3 px-4 text-right font-mono font-semibold text-white">$0.00</td>
+                    <td class="py-3 px-4 text-right font-mono text-slate-300">$167.15</td>
+                    <td class="py-3 px-4 text-slate-300 text-xs">AI決定通り現金温存（HOLD）</td>
+                </tr>
+                
+                <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition text-sm">
+                    <td class="py-3 px-4 font-mono text-slate-300">2026-11-14</td>
+                    <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-600/30 text-slate-300 border border-slate-600/40">見送り / 提案</span></td>
+                    <td class="py-3 px-4 font-bold text-white">なし（見送り）</td>
+                    <td class="py-3 px-4 text-slate-400 text-xs">電力・インフラ（公益）</td>
+                    <td class="py-3 px-4 text-right font-mono">0株</td>
+                    <td class="py-3 px-4 text-right font-mono">$93.59</td>
+                    <td class="py-3 px-4 text-right font-mono font-semibold text-white">$0.00</td>
+                    <td class="py-3 px-4 text-right font-mono text-slate-300">$167.15</td>
+                    <td class="py-3 px-4 text-slate-300 text-xs">【社長の決定待ち】AI提案: SO 1株 @ $93.59（合計 $93.59）の買付方針を提案</td>
+                </tr>
+                
+                <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition text-sm">
+                    <td class="py-3 px-4 font-mono text-slate-300">2026-11-14</td>
+                    <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-600/30 text-slate-300 border border-slate-600/40">見送り / 提案</span></td>
+                    <td class="py-3 px-4 font-bold text-white">なし（見送り）</td>
+                    <td class="py-3 px-4 text-slate-400 text-xs">食品・日用品（生活必需品）</td>
+                    <td class="py-3 px-4 text-right font-mono">0株</td>
+                    <td class="py-3 px-4 text-right font-mono">$25.11</td>
+                    <td class="py-3 px-4 text-right font-mono font-semibold text-white">$0.00</td>
+                    <td class="py-3 px-4 text-right font-mono text-slate-300">$167.15</td>
+                    <td class="py-3 px-4 text-slate-300 text-xs">【社長の決定待ち】AI提案: KHC 4株 @ $25.11（合計 $100.44）の買付方針を提案</td>
+                </tr>
+                
                 <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition text-sm">
                     <td class="py-3 px-4 font-mono text-slate-300">2026-11-14</td>
                     <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">買付 (BUY)</span></td>
