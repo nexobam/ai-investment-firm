@@ -159,7 +159,10 @@ def run_daily_workflow(
         reports_dir=reports_dir,
     )
     recent_trades = load_trade_history(trade_csv_path, limit=30)
-    generate_dashboard(
+    import importlib
+    import dashboard_generator as _dg
+    importlib.reload(_dg)
+    _dg.generate_dashboard(
         portfolio=portfolio,
         decision=decision,
         execution_result=execution_result,

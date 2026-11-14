@@ -186,7 +186,10 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                     reports_dir=reports_dir,
                 )
                 recent_trades = load_trade_history(csv_path, limit=30)
-                generate_dashboard(
+                import importlib
+                import dashboard_generator as _dg
+                importlib.reload(_dg)
+                _dg.generate_dashboard(
                     portfolio=portfolio,
                     decision=decision,
                     execution_result=exec_res,

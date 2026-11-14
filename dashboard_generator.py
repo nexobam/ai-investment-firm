@@ -621,26 +621,34 @@ def generate_dashboard(
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased">
-    <!-- ★ フルスクリーン・スタイリッシュAIローディングオーバーレイ -->
+    <!-- ★ フルスクリーン・スタイリッシュAIローディングオーバーレイ（ドラクエ風4人パーティー演出） -->
     <div id="aiLoadingOverlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/85 backdrop-blur-md px-4 transition-opacity duration-300">
         <div class="relative w-full max-w-lg rounded-3xl bg-gradient-to-b from-slate-900/95 via-slate-900 to-slate-950 border border-sky-500/40 p-6 sm:p-8 shadow-[0_0_60px_rgba(14,165,233,0.25)] overflow-hidden">
             <!-- 背景の淡いネオン装飾 -->
             <div class="pointer-events-none absolute -top-24 -left-24 w-48 h-48 rounded-full bg-sky-500/15 blur-3xl"></div>
             <div class="pointer-events-none absolute -bottom-24 -right-24 w-48 h-48 rounded-full bg-emerald-500/15 blur-3xl"></div>
 
-            <!-- デュアル回転ネオンリング＆中央アイコン -->
-            <div class="relative mx-auto w-24 h-24 flex items-center justify-center mb-5">
-                <div class="absolute inset-0 rounded-full border-4 border-slate-800"></div>
-                <div class="absolute inset-0 rounded-full border-4 border-transparent border-t-emerald-400 border-r-sky-400 ring-spin-slow shadow-[0_0_20px_rgba(56,189,248,0.4)]"></div>
-                <div class="absolute inset-2.5 rounded-full border-4 border-transparent border-b-indigo-400 border-l-emerald-300 ring-spin-reverse"></div>
-                <div id="loadingCenterIcon" class="text-3xl select-none animate-pulse">🤖</div>
+            <!-- ドラクエ風・AI社員4人パーティー行進ステージ＆ネオンリング -->
+            <div class="relative mx-auto flex items-center justify-center gap-3 mb-5 py-2 px-4 rounded-2xl bg-slate-950/90 dq-window w-fit">
+                <div id="modalHero1" class="w-12 h-12 rounded-xl bg-sky-950/90 border-2 border-sky-400 flex items-center justify-center transition-all scale-110 shadow-[0_0_15px_rgba(56,189,248,0.5)]">
+                    {svg_researcher}
+                </div>
+                <div id="modalHero2" class="w-12 h-12 rounded-xl bg-purple-950/90 border border-purple-500/40 flex items-center justify-center transition-all opacity-60">
+                    {svg_analyst}
+                </div>
+                <div id="modalHero3" class="w-12 h-12 rounded-xl bg-amber-950/90 border border-amber-500/40 flex items-center justify-center transition-all opacity-60">
+                    {svg_manager}
+                </div>
+                <div id="modalHero4" class="w-12 h-12 rounded-xl bg-emerald-950/90 border border-emerald-500/40 flex items-center justify-center transition-all opacity-60">
+                    {svg_accountant}
+                </div>
             </div>
 
             <!-- タイトル・サブテキスト -->
             <div class="text-center">
                 <div class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-bold bg-sky-500/15 text-sky-300 border border-sky-500/30 mb-2">
                     <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                    <span id="loadingBadgeText">AI INVESTMENT BOARDROOM LIVE</span>
+                    <span id="loadingBadgeText">AI PARTY QUEST IN PROGRESS</span>
                 </div>
                 <h3 id="loadingTitle" class="text-lg sm:text-xl font-extrabold text-white tracking-tight">
                     AI社員4人が緊急経営会議を行っています...
@@ -664,35 +672,43 @@ def generate_dashboard(
                 </div>
             </div>
 
-            <!-- 4ステップ・ライブ進行インジケーター -->
+            <!-- 4ステップ・ライブ進行インジケーター（各社員のドット絵アイコン付き） -->
             <div id="loadingStepsContainer" class="mt-5 space-y-2 text-left">
-                <div id="loadStep1" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-sky-500/50 bg-sky-950/30 text-xs transition-all">
+                <div id="loadStep1" class="flex items-center justify-between px-3 py-2 rounded-xl border border-sky-500/50 bg-sky-950/30 text-xs transition-all">
                     <div class="flex items-center gap-2.5">
-                        <span id="loadStep1Icon" class="text-base">⏳</span>
-                        <span class="font-bold text-white">1. 米国50銘柄＋5大ETFの最新株価・ニュース取得</span>
+                        <div class="w-8 h-8 rounded-lg bg-sky-950 border border-sky-400/50 flex items-center justify-center shrink-0 overflow-hidden">
+                            {svg_researcher}
+                        </div>
+                        <span class="font-bold text-white">1. 情報屋が米国50銘柄の最新株価・ニュースを収集中</span>
                     </div>
-                    <span id="loadStep1State" class="text-[11px] font-mono text-sky-300 font-bold">進行中...</span>
+                    <span id="loadStep1State" class="text-[11px] font-mono text-sky-300 font-bold shrink-0">⏳ 実行中...</span>
                 </div>
-                <div id="loadStep2" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-900/50 text-xs opacity-50 transition-all">
+                <div id="loadStep2" class="flex items-center justify-between px-3 py-2 rounded-xl border border-slate-800 bg-slate-900/50 text-xs opacity-50 transition-all">
                     <div class="flex items-center gap-2.5">
-                        <span id="loadStep2Icon" class="text-base">📊</span>
-                        <span class="font-medium text-slate-200">2. RSI・移動平均線・出来高による有望株スクリーニング</span>
+                        <div class="w-8 h-8 rounded-lg bg-purple-950 border border-purple-400/50 flex items-center justify-center shrink-0 overflow-hidden">
+                            {svg_analyst}
+                        </div>
+                        <span class="font-medium text-slate-200">2. 大賢者がチャート・RSIでお買い得な株を計算中</span>
                     </div>
-                    <span id="loadStep2State" class="text-[11px] font-mono text-slate-400">待機中</span>
+                    <span id="loadStep2State" class="text-[11px] font-mono text-slate-400 shrink-0">待機中</span>
                 </div>
-                <div id="loadStep3" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-900/50 text-xs opacity-50 transition-all">
+                <div id="loadStep3" class="flex items-center justify-between px-3 py-2 rounded-xl border border-slate-800 bg-slate-900/50 text-xs opacity-50 transition-all">
                     <div class="flex items-center gap-2.5">
-                        <span id="loadStep3Icon" class="text-base">💬</span>
-                        <span class="font-medium text-slate-200">3. 4人のAI社員（調査・技術・FM）が徹底議論中</span>
+                        <div class="w-8 h-8 rounded-lg bg-amber-950 border border-amber-400/50 flex items-center justify-center shrink-0 overflow-hidden">
+                            {svg_manager}
+                        </div>
+                        <span class="font-medium text-slate-200">3. 勇者リーダーを中心にAI社員4人が徹底議論中</span>
                     </div>
-                    <span id="loadStep3State" class="text-[11px] font-mono text-slate-400">待機中</span>
+                    <span id="loadStep3State" class="text-[11px] font-mono text-slate-400 shrink-0">待機中</span>
                 </div>
-                <div id="loadStep4" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-900/50 text-xs opacity-50 transition-all">
+                <div id="loadStep4" class="flex items-center justify-between px-3 py-2 rounded-xl border border-slate-800 bg-slate-900/50 text-xs opacity-50 transition-all">
                     <div class="flex items-center gap-2.5">
-                        <span id="loadStep4Icon" class="text-base">🛡️</span>
-                        <span class="font-medium text-slate-200">4. 35%リスク制限チェック＆社長向け提案シート作成</span>
+                        <div class="w-8 h-8 rounded-lg bg-emerald-950 border border-emerald-400/50 flex items-center justify-center shrink-0 overflow-hidden">
+                            {svg_accountant}
+                        </div>
+                        <span class="font-medium text-slate-200">4. 金庫番パラディンが予算チェック＆提案書作成中</span>
                     </div>
-                    <span id="loadStep4State" class="text-[11px] font-mono text-slate-400">待機中</span>
+                    <span id="loadStep4State" class="text-[11px] font-mono text-slate-400 shrink-0">待機中</span>
                 </div>
             </div>
 
@@ -1407,26 +1423,31 @@ def generate_dashboard(
 
         function setStepVisual(stepNum, status) {{
             const row = document.getElementById('loadStep' + stepNum);
-            const icon = document.getElementById('loadStep' + stepNum + 'Icon');
             const state = document.getElementById('loadStep' + stepNum + 'State');
-            if (!row || !icon || !state) return;
+            const hero = document.getElementById('modalHero' + stepNum);
+            if (!row || !state) return;
 
-            const defaultIcons = {{ 1: '🌎', 2: '📊', 3: '💬', 4: '🛡️' }};
             if (status === 'done') {{
-                row.className = 'flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-emerald-500/40 bg-emerald-950/25 text-xs transition-all';
-                icon.textContent = '✅';
-                state.textContent = '完了';
-                state.className = 'text-[11px] font-mono text-emerald-400 font-bold';
+                row.className = 'flex items-center justify-between px-3 py-2 rounded-xl border border-emerald-500/40 bg-emerald-950/25 text-xs transition-all';
+                state.textContent = '✅ 完了';
+                state.className = 'text-[11px] font-mono text-emerald-400 font-bold shrink-0';
+                if (hero) {{
+                    hero.className = 'w-12 h-12 rounded-xl bg-emerald-950/90 border-2 border-emerald-400 flex items-center justify-center transition-all opacity-95';
+                }}
             }} else if (status === 'active') {{
-                row.className = 'flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-sky-500/60 bg-sky-950/40 text-xs shadow-[0_0_20px_rgba(14,165,233,0.18)] transition-all';
-                icon.textContent = '⏳';
-                state.textContent = '実行中...';
-                state.className = 'text-[11px] font-mono text-sky-300 font-bold animate-pulse';
+                row.className = 'flex items-center justify-between px-3 py-2 rounded-xl border border-sky-500/60 bg-sky-950/40 text-xs shadow-[0_0_20px_rgba(14,165,233,0.18)] transition-all';
+                state.textContent = '⏳ 実行中...';
+                state.className = 'text-[11px] font-mono text-sky-300 font-bold animate-pulse shrink-0';
+                if (hero) {{
+                    hero.className = 'w-12 h-12 rounded-xl bg-sky-950/90 border-2 border-amber-300 flex items-center justify-center transition-all scale-115 shadow-[0_0_18px_rgba(251,191,36,0.65)]';
+                }}
             }} else {{
-                row.className = 'flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-900/50 text-xs opacity-50 transition-all';
-                icon.textContent = defaultIcons[stepNum] || '⏳';
+                row.className = 'flex items-center justify-between px-3 py-2 rounded-xl border border-slate-800 bg-slate-900/50 text-xs opacity-50 transition-all';
                 state.textContent = '待機中';
-                state.className = 'text-[11px] font-mono text-slate-400';
+                state.className = 'text-[11px] font-mono text-slate-400 shrink-0';
+                if (hero) {{
+                    hero.className = 'w-12 h-12 rounded-xl bg-slate-900/90 border border-slate-700 flex items-center justify-center transition-all opacity-50';
+                }}
             }}
         }}
 
@@ -1435,7 +1456,6 @@ def generate_dashboard(
             const titleEl = document.getElementById('loadingTitle');
             const subEl = document.getElementById('loadingSubtitle');
             const badgeEl = document.getElementById('loadingBadgeText');
-            const centerIcon = document.getElementById('loadingCenterIcon');
             const stepsContainer = document.getElementById('loadingStepsContainer');
             const stepSummary = document.getElementById('loadingStepSummary');
             const timerEl = document.getElementById('loadingTimer');
@@ -1444,18 +1464,25 @@ def generate_dashboard(
 
             if (loadingTimerId) clearInterval(loadingTimerId);
             loadingStartMs = Date.now();
+            timerEl.textContent = '0.0 秒';
+            pctEl.textContent = '8%';
+            barEl.style.width = '8%';
 
             if (mode === 'trade') {{
-                centerIcon.textContent = '👑';
                 badgeEl.textContent = 'PORTFOLIO SYNCING';
                 titleEl.textContent = customTitle || '社長の決定を口座データへ反映しています...';
                 subEl.textContent = customSub || '保有株・現金残高・最新ダッシュボードを更新中です';
+                stepSummary.textContent = '口座データ・グラフ更新中...';
                 stepsContainer.classList.add('hidden');
+                setStepVisual(1, 'done');
+                setStepVisual(2, 'done');
+                setStepVisual(3, 'done');
+                setStepVisual(4, 'active');
             }} else {{
-                centerIcon.textContent = '🤖';
-                badgeEl.textContent = 'AI INVESTMENT BOARDROOM LIVE';
+                badgeEl.textContent = 'AI PARTY QUEST IN PROGRESS';
                 titleEl.textContent = customTitle || 'AI社員4人が緊急経営会議を行っています...';
                 subEl.textContent = customSub || '米国50銘柄の最新データ取得とGemini AI合議を実行中です（約15〜20秒）';
+                stepSummary.textContent = 'STEP 1 / 4 : 米国市場データ取得中...';
                 stepsContainer.classList.remove('hidden');
                 setStepVisual(1, 'active');
                 setStepVisual(2, 'pending');
@@ -1484,25 +1511,25 @@ def generate_dashboard(
                 barEl.style.width = pct + '%';
 
                 if (elapsedSec < 4.2) {{
-                    stepSummary.textContent = 'STEP 1 / 4 : 米国市場データ取得中...';
+                    stepSummary.textContent = 'STEP 1 / 4 : 情報屋が市場データ取得中...';
                     setStepVisual(1, 'active');
                     setStepVisual(2, 'pending');
                     setStepVisual(3, 'pending');
                     setStepVisual(4, 'pending');
                 }} else if (elapsedSec < 8.5) {{
-                    stepSummary.textContent = 'STEP 2 / 4 : テクニカル指標スクリーニング中...';
+                    stepSummary.textContent = 'STEP 2 / 4 : 大賢者がお買い得株を計算中...';
                     setStepVisual(1, 'done');
                     setStepVisual(2, 'active');
                     setStepVisual(3, 'pending');
                     setStepVisual(4, 'pending');
                 }} else if (elapsedSec < 15.0) {{
-                    stepSummary.textContent = 'STEP 3 / 4 : AI社員4人が徹底議論中...';
+                    stepSummary.textContent = 'STEP 3 / 4 : 勇者リーダーと全員が徹底議論中...';
                     setStepVisual(1, 'done');
                     setStepVisual(2, 'done');
                     setStepVisual(3, 'active');
                     setStepVisual(4, 'pending');
                 }} else {{
-                    stepSummary.textContent = 'STEP 4 / 4 : 最終提案シート作成中...';
+                    stepSummary.textContent = 'STEP 4 / 4 : 金庫番パラディンが提案書作成中...';
                     setStepVisual(1, 'done');
                     setStepVisual(2, 'done');
                     setStepVisual(3, 'done');
@@ -1522,7 +1549,6 @@ def generate_dashboard(
                 overlay.classList.remove('flex');
                 return;
             }}
-            document.getElementById('loadingCenterIcon').textContent = '✨';
             document.getElementById('loadingPercent').textContent = '100%';
             document.getElementById('loadingProgressBar').style.width = '100%';
             document.getElementById('loadingStepSummary').textContent = 'COMPLETE! 画面を更新します...';
@@ -1533,6 +1559,11 @@ def generate_dashboard(
             setStepVisual(2, 'done');
             setStepVisual(3, 'done');
             setStepVisual(4, 'done');
+        }}
+
+        function reloadDashboardFresh() {{
+            const baseUrl = window.location.href.split('?')[0].split('#')[0];
+            window.location.replace(baseUrl + '?t=' + Date.now());
         }}
 
         async function checkLocalServer() {{
@@ -1578,7 +1609,7 @@ def generate_dashboard(
                 }}
                 stopLoadingOverlay(true, '✅ 社長の決定を口座データに反映しました！');
                 showOwnerAlert('✅ <b>決定を反映しました！</b>（' + data.message + '）画面を更新します...', false);
-                setTimeout(() => window.location.reload(), 700);
+                setTimeout(() => reloadDashboardFresh(), 700);
             }} catch (err) {{
                 stopLoadingOverlay(false);
                 showOwnerAlert('❌ エラー: ' + err.message, true);
@@ -1619,7 +1650,7 @@ def generate_dashboard(
                 }}
                 stopLoadingOverlay(true, '✅ AI経営会議が完了！新しい提案が届きました');
                 showOwnerAlert('✅ <b>AI経営会議が完了し、新しい方針提案が届きました！</b> 画面を更新します...', false);
-                setTimeout(() => window.location.reload(), 700);
+                setTimeout(() => reloadDashboardFresh(), 700);
             }} catch (err) {{
                 stopLoadingOverlay(false);
                 showOwnerAlert('❌ エラー: ' + err.message, true);
@@ -1673,7 +1704,7 @@ def generate_dashboard(
                 }}
                 stopLoadingOverlay(true, '✅ 口座データの更新が完了しました！');
                 showOwnerAlert('✅ <b>' + data.message + '</b> 画面を最新状態に更新します...', false);
-                setTimeout(() => window.location.reload(), 700);
+                setTimeout(() => reloadDashboardFresh(), 700);
             }} catch (err) {{
                 stopLoadingOverlay(false);
                 showOwnerAlert('❌ エラー: ' + err.message, true);
