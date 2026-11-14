@@ -43,6 +43,8 @@ def run_daily_workflow(
     base_dir: Path = BASE_DIR,
     force: bool = False,
     current_date: str | None = None,
+    owner_instruction: str = "",
+    analysis_only: bool = False,
 ) -> dict[str, Any]:
     """
     日次シミュレーションのフルパイプラインを実行する。
@@ -106,8 +108,27 @@ def run_daily_workflow(
 
     # 5. 第2段階：マルチAIエージェント経営会議（1回のAPIコールで構造化JSON取得）
     logging.info("第2段階：マルチAIエージェント経営会議を開始します...")
-    prompt_text = build_meeting_prompt(portfolio, candidates, holdings_info)
+    effective_instruction = owner_instruction.strip()
+    if analysis_only:
+        analysis_note = "【分析専用モード】今回は売買注文を実行せず（action='HOLD', ticker='NONE', shares=0）、候補銘柄と保有銘柄の詳細な分析コメントと今後の戦略提案のみを行ってください。"
+        effective_instruction = f"{effective_instruction}\n{analysis_note}".strip()
+
+    prompt_text = build_meeting_prompt(
+        portfolio,
+        candidates,
+        holdings_info,
+        owner_instruction=effective_instruction,
+    )
     decision = run_ai_meeting(prompt_text)
+    if analysis_only and decision.action.upper() != "HOLD":
+        decision.sbi_order_guide = (
+            f"【分析のみモード（AI推奨案: {decision.action} {decision.ticker} {decision.shares}株）】"
+            f" {decision.sbi_order_guide}"
+        )
+        decision.action = "HOLD"
+        decision.ticker = "NONE"
+        decision.shares = 0
+
     logging.info(
         "AI会議結論: Action=%s, Ticker=%s, Shares=%d",
         decision.action,
@@ -174,13 +195,29 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="休場日（前回取引日と同一）であってもスキップせず強制実行する",
     )
+    parser.add_argument(
+        "--instruction",
+        type=str,
+        default="",
+        help="オーナー（社長）からAI社員への直接命令・投資方針指示",
+    )
+    parser.add_argument(
+        "--analysis-only",
+        action="store_true",
+        help="売買は行わず（HOLD固定）、今すぐ最新の市場分析と会議だけを実行する",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     setup_logging()
     args = parse_args(argv)
-    run_daily_workflow(base_dir=BASE_DIR, force=args.force)
+    run_daily_workflow(
+        base_dir=BASE_DIR,
+        force=args.force or bool(args.instruction) or args.analysis_only,
+        owner_instruction=args.instruction,
+        analysis_only=args.analysis_only,
+    )
     return 0
 
 

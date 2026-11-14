@@ -18,10 +18,11 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from agents import MeetingDecision, run_ai_meeting
+from agents import MeetingDecision, build_meeting_prompt, run_ai_meeting
 from portfolio_manager import (
     apply_monthly_deposit,
     load_or_init_portfolio,
+    record_owner_trade_report,
     validate_and_execute,
 )
 from screener import (
@@ -315,3 +316,58 @@ def test_ut10_run_ai_meeting_mock_and_genai_sdk() -> None:
             assert decision_real.ticker == "SCHD"
             assert decision_real.shares == 2
             mock_client_instance.models.generate_content.assert_called_once()
+
+
+def test_ut11_owner_instruction_and_manual_trade_report(tmp_path: Path) -> None:
+    """UT-11: オーナー直接命令のプロンプト反映と手動売買・入金報告の記帳検証"""
+    portfolio = load_or_init_portfolio(tmp_path / "portfolio.json", current_date="2026-11-14")
+    prompt = build_meeting_prompt(
+        portfolio,
+        candidates=[],
+        holdings_info={},
+        owner_instruction="高配当ETFのSCHDを最優先で分析してください",
+    )
+    assert "高配当ETFのSCHDを最優先で分析してください" in prompt
+
+    # ① オーナー買付報告 (SCHD 2株 @ $28.50 = $57.00)
+    portfolio, dec_buy, res_buy = record_owner_trade_report(
+        portfolio=portfolio,
+        action="BUY",
+        ticker="SCHD",
+        shares=2,
+        price=28.50,
+        sector_map=UNIVERSE_STOCKS,
+        current_date="2026-11-14",
+        note="SBI証券NISA枠で買付",
+    )
+    assert res_buy["action"] == "BUY"
+    assert portfolio["cash"] == 330.0 - 57.0
+    assert portfolio["holdings"]["SCHD"]["shares"] == 2
+
+    # ② オーナー売却報告 (SCHD 1株 @ $30.00)
+    portfolio, dec_sell, res_sell = record_owner_trade_report(
+        portfolio=portfolio,
+        action="SELL",
+        ticker="SCHD",
+        shares=1,
+        price=30.00,
+        sector_map=UNIVERSE_STOCKS,
+        current_date="2026-11-14",
+    )
+    assert res_sell["action"] == "SELL"
+    assert portfolio["holdings"]["SCHD"]["shares"] == 1
+    assert portfolio["cash"] == 273.0 + 30.0
+
+    # ③ オーナー追加入金報告 (+$50.00)
+    portfolio, dec_dep, res_dep = record_owner_trade_report(
+        portfolio=portfolio,
+        action="DEPOSIT",
+        ticker="CASH",
+        shares=0,
+        price=50.00,
+        sector_map=UNIVERSE_STOCKS,
+        current_date="2026-11-14",
+    )
+    assert portfolio["cash"] == 353.0
+    assert portfolio["total_deposited"] == 380.0
+

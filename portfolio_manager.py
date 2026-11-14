@@ -540,3 +540,213 @@ def generate_daily_report(
         f.write(content)
 
     return report_path
+
+
+def record_owner_trade_report(
+    portfolio: dict[str, Any],
+    action: str,
+    ticker: str,
+    shares: int,
+    price: float,
+    sector_map: dict[str, str],
+    current_date: str | None = None,
+    note: str = "",
+) -> tuple[dict[str, Any], MeetingDecision, dict[str, Any]]:
+    """
+    オーナー（社長）からの手動売買報告（BUY / SELL / DEPOSIT）をポートフォリオへ反映する。
+    """
+    jst = datetime.timezone(datetime.timedelta(hours=9))
+    now_dt = datetime.datetime.now(jst)
+    if current_date is None:
+        current_date = now_dt.strftime("%Y-%m-%d")
+    market_date = str(portfolio.get("last_market_date") or current_date)
+
+    act = action.upper().strip()
+    tkr = ticker.upper().strip() if ticker else "NONE"
+    holdings: dict[str, dict[str, Any]] = portfolio.setdefault("holdings", {})
+    cash_before = round(float(portfolio.get("cash", 0.0)), 2)
+
+    if act == "DEPOSIT":
+        deposit_amount = round(float(price), 2)
+        if deposit_amount <= 0:
+            raise ValueError("入金額は 0 より大きい金額（USD）を指定してください。")
+        portfolio["cash"] = round(cash_before + deposit_amount, 2)
+        portfolio["total_deposited"] = round(
+            float(portfolio.get("total_deposited", INITIAL_CAPITAL_USD)) + deposit_amount, 2
+        )
+        portfolio.setdefault("deposit_history", []).append(
+            {
+                "date": current_date,
+                "month": current_date[:7],
+                "amount": deposit_amount,
+                "type": "OWNER_REPORT",
+                "note": note or f"オーナー手動入金報告 (+${deposit_amount:.2f})",
+            }
+        )
+        exec_action = "HOLD"
+        exec_ticker = "CASH"
+        exec_sector = "Cash Deposit"
+        exec_shares = 0
+        exec_price = deposit_amount
+        exec_total = deposit_amount
+        exec_note = note or f"【オーナー報告】現金追加入金 +${deposit_amount:.2f} を反映"
+        accountant_msg = f"【オーナー入金反映完了】ご報告いただいた追加入金 +${deposit_amount:.2f} を現金残高および累計元本へ反映しました（現在現金: ${portfolio['cash']:.2f}）。"
+
+    elif act == "BUY":
+        if not tkr or tkr == "NONE":
+            raise ValueError("購入した銘柄のティッカー（例: NVDA, SCHD）を入力してください。")
+        if int(shares) < 1:
+            raise ValueError("購入株数は1株以上の整数を指定してください。")
+        if float(price) <= 0:
+            raise ValueError("約定単価（USD）は 0 より大きい数値を指定してください。")
+
+        exec_shares = int(shares)
+        exec_price = round(float(price), 2)
+        exec_total = round(exec_shares * exec_price, 2)
+        exec_sector = sector_map.get(tkr, holdings.get(tkr, {}).get("sector", "Other"))
+
+        # もし実購入額が現在の仮想現金残高を超えている場合は、差額をオーナー追加入金として自動補填
+        auto_topup = 0.0
+        if exec_total > cash_before:
+            auto_topup = round(exec_total - cash_before, 2)
+            portfolio["cash"] = round(cash_before + auto_topup, 2)
+            portfolio["total_deposited"] = round(
+                float(portfolio.get("total_deposited", INITIAL_CAPITAL_USD)) + auto_topup, 2
+            )
+            portfolio.setdefault("deposit_history", []).append(
+                {
+                    "date": current_date,
+                    "month": current_date[:7],
+                    "amount": auto_topup,
+                    "type": "AUTO_TOPUP",
+                    "note": f"{tkr} 購入報告に伴う不足現金の自動入金補填 (+${auto_topup:.2f})",
+                }
+            )
+
+        portfolio["cash"] = round(float(portfolio["cash"]) - exec_total, 2)
+        existing = holdings.get(tkr, {})
+        old_shares = int(existing.get("shares", 0))
+        old_avg = float(existing.get("avg_cost", 0.0))
+        new_shares = old_shares + exec_shares
+        new_avg = round(((old_shares * old_avg) + exec_total) / new_shares, 2)
+
+        holdings[tkr] = {
+            "ticker": tkr,
+            "sector": exec_sector,
+            "shares": new_shares,
+            "avg_cost": new_avg,
+            "current_price": exec_price,
+            "market_value": round(new_shares * exec_price, 2),
+            "unrealized_pnl": round((exec_price - new_avg) * new_shares, 2),
+            "unrealized_pnl_pct": round(((exec_price - new_avg) / new_avg) * 100.0, 2)
+            if new_avg > 0
+            else 0.0,
+        }
+        exec_action = "BUY"
+        exec_ticker = tkr
+        topup_msg = f"（不足分 ${auto_topup:.2f} を元本へ自動補填）" if auto_topup > 0 else ""
+        exec_note = note or f"【オーナー買付報告】{tkr} {exec_shares}株 @ ${exec_price:.2f} 買付反映{topup_msg}"
+        accountant_msg = (
+            f"【オーナー買付報告を記帳完了】SBI証券等での実買付報告（{tkr} {exec_shares}株 @ ${exec_price:.2f} / "
+            f"合計 ${exec_total:.2f}{topup_msg}）をポートフォリオへ反映しました。現在の {tkr} 保有数は {new_shares}株 です。"
+        )
+
+    elif act == "SELL":
+        if not tkr or tkr not in holdings:
+            raise ValueError(f"銘柄 {tkr} は現在保有リストに存在しないため売却報告できません。")
+        existing = holdings[tkr]
+        old_shares = int(existing.get("shares", 0))
+        if int(shares) < 1 or int(shares) > old_shares:
+            raise ValueError(f"売却株数は 1 〜 現在保有株数（{old_shares}株）の範囲で指定してください。")
+        if float(price) <= 0:
+            raise ValueError("売却単価（USD）は 0 より大きい数値を指定してください。")
+
+        exec_shares = int(shares)
+        exec_price = round(float(price), 2)
+        exec_total = round(exec_shares * exec_price, 2)
+        exec_sector = existing.get("sector", sector_map.get(tkr, "Other"))
+        avg_cost = float(existing.get("avg_cost", exec_price))
+        realized_pnl = round((exec_price - avg_cost) * exec_shares, 2)
+
+        portfolio["cash"] = round(cash_before + exec_total, 2)
+        rem_shares = old_shares - exec_shares
+        if rem_shares <= 0:
+            del holdings[tkr]
+        else:
+            existing["shares"] = rem_shares
+            existing["current_price"] = exec_price
+            existing["market_value"] = round(rem_shares * exec_price, 2)
+            existing["unrealized_pnl"] = round((exec_price - avg_cost) * rem_shares, 2)
+
+        exec_action = "SELL"
+        exec_ticker = tkr
+        exec_note = (
+            note
+            or f"【オーナー売却報告】{tkr} {exec_shares}株 @ ${exec_price:.2f} 売却反映 (実現損益 ${realized_pnl:+.2f})"
+        )
+        accountant_msg = (
+            f"【オーナー売却報告を記帳完了】{tkr} {exec_shares}株 @ ${exec_price:.2f}（受取額 ${exec_total:.2f} / "
+            f"実現損益 ${realized_pnl:+.2f}）の売却をポートフォリオへ反映しました。"
+        )
+    else:
+        raise ValueError(f"未対応の報告区分です: {action}")
+
+    holdings_value_after = update_holdings_valuation(portfolio, {tkr: exec_price} if tkr != "NONE" else {}, sector_map)
+    cash_after = round(float(portfolio.get("cash", 0.0)), 2)
+    total_equity_after = round(cash_after + holdings_value_after, 2)
+    total_deposited = round(float(portfolio.get("total_deposited", INITIAL_CAPITAL_USD)), 2)
+    total_return = round(total_equity_after - total_deposited, 2)
+    total_return_pct = round((total_return / total_deposited) * 100.0, 2) if total_deposited > 0 else 0.0
+
+    portfolio["updated_at"] = now_dt.isoformat(timespec="seconds")
+    snapshot = {
+        "date": current_date,
+        "market_date": market_date,
+        "cash": cash_after,
+        "holdings_value": holdings_value_after,
+        "total_equity": total_equity_after,
+        "total_deposited": total_deposited,
+        "total_return": total_return,
+        "total_return_pct": total_return_pct,
+        "action": exec_action,
+        "ticker": exec_ticker,
+    }
+    asset_history: list[dict[str, Any]] = portfolio.setdefault("asset_history", [])
+    if asset_history and asset_history[-1].get("date") == current_date:
+        asset_history[-1] = snapshot
+    else:
+        asset_history.append(snapshot)
+
+    decision = MeetingDecision(
+        action=exec_action,
+        ticker=exec_ticker,
+        shares=exec_shares,
+        researcher_comment=f"オーナー（社長）からの手動報告（{act}: {exec_ticker}）を受領しました。次回以降のニュース監視対象へ即座に反映します。",
+        analyst_comment=f"ポートフォリオの最新保有状況（現金 ${cash_after:.2f} / 保有評価額 ${holdings_value_after:.2f}）に基づき、テクニカル監視ラインを再計算しました。",
+        manager_reason=f"オーナーからの直接報告（{exec_note}）を最優先で承認・反映しました。次回会議ではこの最新ポートフォリオを前提に戦略を立案します。",
+        sbi_order_guide=f"オーナーによる実取引報告（{exec_note}）の記帳が完了しています。",
+    )
+
+    execution_result = {
+        "date": current_date,
+        "market_date": market_date,
+        "requested_action": exec_action,
+        "requested_ticker": exec_ticker,
+        "requested_shares": exec_shares,
+        "action": exec_action,
+        "ticker": exec_ticker,
+        "sector": exec_sector,
+        "shares": exec_shares,
+        "price": exec_price,
+        "total_amount": exec_total,
+        "cash_after": cash_after,
+        "holdings_value_after": holdings_value_after,
+        "total_equity_after": total_equity_after,
+        "total_deposited": total_deposited,
+        "total_return": total_return,
+        "total_return_pct": total_return_pct,
+        "note": exec_note,
+        "accountant_comment": accountant_msg,
+    }
+    return portfolio, decision, execution_result
+

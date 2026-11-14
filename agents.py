@@ -33,10 +33,12 @@ def build_meeting_prompt(
     portfolio: dict[str, Any],
     candidates: list[dict[str, Any]],
     holdings_info: dict[str, dict[str, Any]],
+    owner_instruction: str = "",
 ) -> str:
     """
     現在のポートフォリオ状況、保有銘柄データ、一次スクリーニング上位6銘柄の
-    テクニカル指標・ニュースを統合したAI経営会議用プロンプトを生成する。
+    テクニカル指標・ニュース、およびオーナー（社長）からの特別指示を統合した
+    AI経営会議用プロンプトを生成する。
     """
     cash = float(portfolio.get("cash", 0.0))
     holdings_value = sum(
@@ -90,9 +92,17 @@ def build_meeting_prompt(
             }
         )
 
+    owner_section = ""
+    if owner_instruction and owner_instruction.strip():
+        owner_section = f"""
+【👑 オーナー（社長）からの直接命令（最優先で考慮すること）】
+「{owner_instruction.strip()}」
+※各エージェントは上記のオーナー命令に必ず言及・配慮して分析および最終決定（BUY/SELL/HOLD）を行ってください。もし「買わずに分析だけして」「様子見（HOLD）にして」等の指示がある場合は、具体的な銘柄分析を行いつつ最終actionは "HOLD" としてください。
+"""
+
     prompt = f"""あなたは米国株を対象とした仮想投資会社のマルチAIエージェント経営会議システムです。
 以下のポートフォリオ状況、現在保有中の銘柄データ、およびPython一次スクリーニングを通過した上位候補銘柄データを分析し、本日の投資意思決定をJSON（MeetingDecisionスキーマ）で出力してください。
-
+{owner_section}
 【現在の口座・資産状況】
 - 現金残高 (Cash): ${cash:.2f}
 - 保有株評価額合計: ${holdings_value:.2f}

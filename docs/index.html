@@ -58,6 +58,151 @@
             </div>
         </section>
 
+        <!-- ★新機能：オーナー（社長）指令室 ＆ 実売買報告パネル -->
+        <section class="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/40 border border-indigo-500/40 rounded-2xl p-6 shadow-xl">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-800 pb-4 mb-5">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-2xl">👑</span>
+                    <div>
+                        <h2 class="text-lg font-extrabold text-white">オーナー（社長）指令室 ＆ 実売買報告パネル</h2>
+                        <p class="text-xs text-slate-400">
+                            朝9時の自動会議以外でも、「今すぐ分析して！」の命令や、SBI証券で実際に売買した内容の報告・反映がいつでも行えます。
+                        </p>
+                    </div>
+                </div>
+                <span id="serverStatusBadge" class="px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700 self-start sm:self-center">
+                    接続確認中...
+                </span>
+            </div>
+
+            <!-- ステータスメッセージ表示欄 -->
+            <div id="ownerStatusAlert" class="hidden mb-5 p-4 rounded-xl border text-sm font-medium"></div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- 左パネル：AI社員に今すぐ分析・会議を命令する -->
+                <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-sky-300 flex items-center gap-2">
+                                <span>🗣️ 1. AI社員に「今すぐ分析・会議」を命令する</span>
+                            </h3>
+                            <span class="text-[11px] text-slate-400">所要時間: 約15〜20秒</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mb-3">
+                            下のタグを押すか、自由な指示を入力して「会議を招集」を押すと、今すぐ最新株価を取ってきてAI社員4人が議論します。
+                        </p>
+
+                        <!-- ワンクリック定型命令タグ -->
+                        <div class="flex flex-wrap gap-1.5 mb-3">
+                            <button type="button" onclick="setPresetInstruction('今は売買せず、現在の保有株と注目候補銘柄の詳しい分析だけ報告して', true)"
+                                class="px-2.5 py-1 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                                📊 買わずに今すぐ分析だけ
+                            </button>
+                            <button type="button" onclick="setPresetInstruction('高配当ETF（SCHD）やS&P500（SPYM）など安定ETFを優先して検討して', false)"
+                                class="px-2.5 py-1 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                                🛡️ 安定ETF優先で会議
+                            </button>
+                            <button type="button" onclick="setPresetInstruction('現在保有している銘柄を売るべきか（利確・損切り）、継続保有すべきか重点的に診断して', true)"
+                                class="px-2.5 py-1 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                                💰 保有株の売り時診断
+                            </button>
+                            <button type="button" onclick="setPresetInstruction('売られすぎ（RSIが低い）の押し目銘柄を中心に買い場を探して', false)"
+                                class="px-2.5 py-1 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                                🚀 押し目買い候補を探す
+                            </button>
+                        </div>
+
+                        <textarea id="ownerInstructionInput" rows="2"
+                            placeholder="例：今日は買わずに市場とNVDAの分析だけして / SCHDを優先して検討して（空欄でも実行可能）"
+                            class="w-full rounded-xl bg-slate-900 border border-slate-700 text-slate-100 text-sm p-3 focus:outline-none focus:border-sky-500"></textarea>
+
+                        <label class="flex items-center gap-2 mt-2.5 text-xs text-slate-300 cursor-pointer select-none">
+                            <input type="checkbox" id="analysisOnlyCheck" class="rounded bg-slate-900 border-slate-700 text-sky-500 focus:ring-0">
+                            <span>今回は仮想売買を行わず「分析・相談のみ（HOLD固定）」で会議する</span>
+                        </label>
+                    </div>
+
+                    <button type="button" id="runMeetingBtn" onclick="triggerInstantMeeting()"
+                        class="mt-4 w-full py-2.5 px-4 rounded-xl font-bold text-sm bg-sky-600 hover:bg-sky-500 text-white shadow-lg shadow-sky-900/40 transition flex items-center justify-center gap-2">
+                        <span>🚀 AI経営会議を今すぐ招集する</span>
+                    </button>
+                </div>
+
+                <!-- 右パネル：実際に買った・売った・入金した報告 -->
+                <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-emerald-300 flex items-center gap-2">
+                                <span>📝 2.「実際に買った／売った／入金した」を報告する</span>
+                            </h3>
+                            <span class="text-[11px] text-slate-400">即時反映</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mb-3">
+                            SBI証券で実際に株を買ったり売ったりした際にここから報告すると、保有株・現金残高に即反映され、次回からAIがその保有状況を前提に提案します。
+                        </p>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                            <div>
+                                <label class="block text-[11px] text-slate-400 mb-1">報告の種類</label>
+                                <select id="reportActionSelect" onchange="toggleReportFields()"
+                                    class="w-full rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-sm p-2 focus:outline-none focus:border-emerald-500">
+                                    <option value="BUY">🟢 株を買った（BUY報告）</option>
+                                    <option value="SELL">🔴 株を売った（SELL報告）</option>
+                                    <option value="DEPOSIT">💵 現金を追加入金した（+$）</option>
+                                </select>
+                            </div>
+                            <div id="reportTickerWrap">
+                                <label class="block text-[11px] text-slate-400 mb-1">銘柄ティッカー（半角英字）</label>
+                                <input type="text" id="reportTickerInput" list="universeTickerList" placeholder="例: NVDA, SCHD, SPYM"
+                                    class="w-full rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-sm p-2 uppercase font-mono focus:outline-none focus:border-emerald-500">
+                                <datalist id="universeTickerList">
+                                    <option value="SPYM">SPYM (S&amp;P500 ETF)</option>
+                                    <option value="SCHD">SCHD (高配当 ETF)</option>
+                                    <option value="QQQM">QQQM (NASDAQ100 ETF)</option>
+                                    <option value="VXUS">VXUS (全世界除く米国 ETF)</option>
+                                    <option value="VTI">VTI (全米株式 ETF)</option>
+                                    <option value="NVDA">NVDA (NVIDIA)</option>
+                                    <option value="AAPL">AAPL (Apple)</option>
+                                    <option value="MSFT">MSFT (Microsoft)</option>
+                                    <option value="GOOGL">GOOGL (Alphabet)</option>
+                                    <option value="AMZN">AMZN (Amazon)</option>
+                                    <option value="TSLA">TSLA (Tesla)</option>
+                                    <option value="META">META (Meta)</option>
+                                    <option value="KO">KO (Coca-Cola)</option>
+                                    <option value="PFE">PFE (Pfizer)</option>
+                                    <option value="VZ">VZ (Verizon)</option>
+                                    <option value="O">O (Realty Income)</option>
+                                </datalist>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div id="reportSharesWrap">
+                                <label class="block text-[11px] text-slate-400 mb-1">株数（整数）</label>
+                                <input type="number" id="reportSharesInput" value="1" min="1" step="1"
+                                    class="w-full rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-sm p-2 font-mono focus:outline-none focus:border-emerald-500">
+                            </div>
+                            <div>
+                                <label id="reportPriceLabel" class="block text-[11px] text-slate-400 mb-1">約定単価 (USD / 空欄で現在値)</label>
+                                <input type="number" id="reportPriceInput" placeholder="自動取得" min="0.01" step="0.01"
+                                    class="w-full rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-sm p-2 font-mono focus:outline-none focus:border-emerald-500">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] text-slate-400 mb-1">メモ（任意）</label>
+                                <input type="text" id="reportNoteInput" placeholder="例: SBI証券NISAで買付"
+                                    class="w-full rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-sm p-2 focus:outline-none focus:border-emerald-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" id="submitReportBtn" onclick="submitManualTradeReport()"
+                        class="mt-4 w-full py-2.5 px-4 rounded-xl font-bold text-sm bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/40 transition flex items-center justify-center gap-2">
+                        <span>✅ 売買・入金を報告してポートフォリオに反映</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
         <!-- 2. 本日の最終結論カード（最上部・強調表示） -->
         <section class="bg-slate-900/95 border-2 border-emerald-500/50 rounded-2xl p-6 shadow-2xl">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800 pb-4">
@@ -353,6 +498,154 @@
                 }
             }
         });
+
+        // =====================================================================
+        // オーナー（社長）指令室 ＆ 実売買報告パネル 操作スクリプト
+        // =====================================================================
+        const statusBadge = document.getElementById('serverStatusBadge');
+        const statusAlert = document.getElementById('ownerStatusAlert');
+
+        function showOwnerAlert(message, isError = false) {
+            statusAlert.classList.remove('hidden', 'bg-rose-950/60', 'border-rose-500/50', 'text-rose-200', 'bg-emerald-950/60', 'border-emerald-500/50', 'text-emerald-200', 'bg-sky-950/60', 'border-sky-500/50', 'text-sky-200');
+            if (isError) {
+                statusAlert.classList.add('bg-rose-950/60', 'border-rose-500/50', 'text-rose-200');
+            } else {
+                statusAlert.classList.add('bg-emerald-950/60', 'border-emerald-500/50', 'text-emerald-200');
+            }
+            statusAlert.innerHTML = message;
+        }
+
+        function setPresetInstruction(text, analysisOnly) {
+            document.getElementById('ownerInstructionInput').value = text;
+            document.getElementById('analysisOnlyCheck').checked = analysisOnly;
+        }
+
+        function toggleReportFields() {
+            const act = document.getElementById('reportActionSelect').value;
+            const tickerWrap = document.getElementById('reportTickerWrap');
+            const sharesWrap = document.getElementById('reportSharesWrap');
+            const priceLabel = document.getElementById('reportPriceLabel');
+            const priceInput = document.getElementById('reportPriceInput');
+            if (act === 'DEPOSIT') {
+                tickerWrap.classList.add('opacity-40', 'pointer-events-none');
+                sharesWrap.classList.add('opacity-40', 'pointer-events-none');
+                priceLabel.textContent = '追加入金額 (USD)';
+                priceInput.placeholder = '例: 100.00';
+            } else {
+                tickerWrap.classList.remove('opacity-40', 'pointer-events-none');
+                sharesWrap.classList.remove('opacity-40', 'pointer-events-none');
+                priceLabel.textContent = '約定単価 (USD / 空欄で現在値)';
+                priceInput.placeholder = '自動取得';
+            }
+        }
+
+        async function checkLocalServer() {
+            if (window.location.protocol === 'file:') {
+                statusBadge.textContent = '📖 閲覧モード (start_dashboard.command で双方向モード起動)';
+                statusBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 self-start sm:self-center';
+                return false;
+            }
+            try {
+                const res = await fetch('/api/ping');
+                if (res.ok) {
+                    statusBadge.textContent = '🟢 社長室サーバー接続中（命令・売買報告 可能）';
+                    statusBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 self-start sm:self-center';
+                    return true;
+                }
+            } catch (e) {}
+            statusBadge.textContent = '📖 Web閲覧モード（ローカルサーバー起動で命令可能）';
+            statusBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700 self-start sm:self-center';
+            return false;
+        }
+
+        async function triggerInstantMeeting() {
+            const online = await checkLocalServer();
+            if (!online) {
+                showOwnerAlert(
+                    '💡 <b>画面から直接AIへ命令するには：</b><br>フォルダ内の <code>start_dashboard.command</code> をダブルクリック（またはターミナルで <code>cd /Users/kasaiyuma/AI/ai-investment-firm && .venv/bin/python server.py</code> を実行）して開いた画面（<code>http://127.0.0.1:8000</code>）からボタンを押してください！',
+                    true
+                );
+                return;
+            }
+
+            const instruction = document.getElementById('ownerInstructionInput').value.trim();
+            const analysisOnly = document.getElementById('analysisOnlyCheck').checked;
+            const btn = document.getElementById('runMeetingBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳ AI社員4人が最新株価を取得して会議中... (約15〜20秒)</span>';
+            showOwnerAlert('⏳ <b>AI経営会議を実行中です...</b> 50銘柄の最新データ取得とGemini AI合議を行っています。そのまま20秒ほどお待ちください。', false);
+
+            try {
+                const res = await fetch('/api/meeting', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ instruction: instruction, analysis_only: analysisOnly })
+                });
+                const data = await res.json();
+                if (!res.ok || data.status !== 'ok') {
+                    throw new Error(data.message || '会議の実行に失敗しました');
+                }
+                showOwnerAlert('✅ <b>AI経営会議が完了しました！</b> 最新結果へ画面を更新します...', false);
+                setTimeout(() => window.location.reload(), 800);
+            } catch (err) {
+                showOwnerAlert('❌ エラー: ' + err.message, true);
+                btn.disabled = false;
+                btn.innerHTML = '<span>🚀 AI経営会議を今すぐ招集する</span>';
+            }
+        }
+
+        async function submitManualTradeReport() {
+            const online = await checkLocalServer();
+            if (!online) {
+                showOwnerAlert(
+                    '💡 <b>売買・入金を画面から直接反映するには：</b><br>フォルダ内の <code>start_dashboard.command</code> をダブルクリック（またはターミナルで <code>cd /Users/kasaiyuma/AI/ai-investment-firm && .venv/bin/python server.py</code> を実行）して開いた画面（<code>http://127.0.0.1:8000</code>）からボタンを押してください！',
+                    true
+                );
+                return;
+            }
+
+            const action = document.getElementById('reportActionSelect').value;
+            const ticker = document.getElementById('reportTickerInput').value.trim().toUpperCase();
+            const shares = parseInt(document.getElementById('reportSharesInput').value || '1', 10);
+            const priceRaw = document.getElementById('reportPriceInput').value.trim();
+            const price = priceRaw ? parseFloat(priceRaw) : 0.0;
+            const note = document.getElementById('reportNoteInput').value.trim();
+
+            if (action !== 'DEPOSIT' && !ticker) {
+                showOwnerAlert('⚠️ 銘柄ティッカー（例: NVDA, SCHD, SPYM）を入力してください。', true);
+                return;
+            }
+
+            const btn = document.getElementById('submitReportBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳ ポートフォリオへ反映中...</span>';
+
+            try {
+                const res = await fetch('/api/manual_trade', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: action,
+                        ticker: ticker,
+                        shares: shares,
+                        price: price,
+                        note: note
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok || data.status !== 'ok') {
+                    throw new Error(data.message || '報告の反映に失敗しました');
+                }
+                showOwnerAlert('✅ <b>' + data.message + '</b> 画面を最新状態に更新します...', false);
+                setTimeout(() => window.location.reload(), 800);
+            } catch (err) {
+                showOwnerAlert('❌ エラー: ' + err.message, true);
+                btn.disabled = false;
+                btn.innerHTML = '<span>✅ 売買・入金を報告してポートフォリオに反映</span>';
+            }
+        }
+
+        checkLocalServer();
     </script>
 </body>
 </html>
