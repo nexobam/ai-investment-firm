@@ -4,7 +4,7 @@
   "total_deposited": 330.0,
   "last_deposit_month": "2026-11",
   "last_market_date": "2026-11-23",
-  "updated_at": "2026-11-24T09:58:00+09:00",
+  "updated_at": "2026-11-25T10:00:41+09:00",
   "holdings": {
     "NVDA": {
       "ticker": "NVDA",
@@ -101,6 +101,18 @@
     },
     {
       "date": "2026-11-24",
+      "market_date": "2026-11-23",
+      "cash": 167.15,
+      "holdings_value": 165.05,
+      "total_equity": 332.2,
+      "total_deposited": 330.0,
+      "total_return": 2.2,
+      "total_return_pct": 0.67,
+      "action": "HOLD",
+      "ticker": "NONE"
+    },
+    {
+      "date": "2026-11-25",
       "market_date": "2026-11-23",
       "cash": 167.15,
       "holdings_value": 165.05,
