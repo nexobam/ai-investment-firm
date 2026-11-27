@@ -3,18 +3,18 @@
   "initial_capital": 330.0,
   "total_deposited": 330.0,
   "last_deposit_month": "2026-11",
-  "last_market_date": "2026-11-24",
-  "updated_at": "2026-11-26T10:01:10+09:00",
+  "last_market_date": "2026-11-25",
+  "updated_at": "2026-11-27T10:06:41+09:00",
   "holdings": {
     "NVDA": {
       "ticker": "NVDA",
       "sector": "Technology",
       "shares": 1,
       "avg_cost": 162.85,
-      "current_price": 155.38,
-      "market_value": 155.38,
-      "unrealized_pnl": -7.47,
-      "unrealized_pnl_pct": -4.59
+      "current_price": 149.3,
+      "market_value": 149.3,
+      "unrealized_pnl": -13.55,
+      "unrealized_pnl_pct": -8.32
     }
   },
   "deposit_history": [
@@ -132,6 +132,18 @@
       "total_deposited": 330.0,
       "total_return": -7.47,
       "total_return_pct": -2.26,
+      "action": "HOLD",
+      "ticker": "NONE"
+    },
+    {
+      "date": "2026-11-27",
+      "market_date": "2026-11-25",
+      "cash": 167.15,
+      "holdings_value": 149.3,
+      "total_equity": 316.45,
+      "total_deposited": 330.0,
+      "total_return": -13.55,
+      "total_return_pct": -4.11,
       "action": "HOLD",
       "ticker": "NONE"
     }
